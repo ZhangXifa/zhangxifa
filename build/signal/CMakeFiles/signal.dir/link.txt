@@ -1,0 +1,2 @@
+/usr/bin/ar qc libsignal.a CMakeFiles/signal.dir/ngx_signal.cxx.o
+/usr/bin/ranlib libsignal.a

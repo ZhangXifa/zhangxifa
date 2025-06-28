@@ -1,0 +1,2 @@
+/usr/bin/ar qc libproc.a CMakeFiles/proc.dir/ngx_daemon.cxx.o CMakeFiles/proc.dir/ngx_event.cxx.o CMakeFiles/proc.dir/ngx_process_cycle.cxx.o
+/usr/bin/ranlib libproc.a

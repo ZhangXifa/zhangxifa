@@ -157,4 +157,5 @@ net/CMakeFiles/net.dir/ngx_c_socket.cxx.o: \
  /mnt/hgfs/LinuxLearning/pointServer/include/ngx_func.h \
  /usr/include/x86_64-linux-gnu/sys/mman.h \
  /usr/include/x86_64-linux-gnu/bits/mman.h \
- /usr/include/x86_64-linux-gnu/bits/mman-linux.h
+ /usr/include/x86_64-linux-gnu/bits/mman-linux.h \
+ /mnt/hgfs/LinuxLearning/pointServer/include/ngx_hostByte_to_netByte.h

@@ -22,6 +22,7 @@
 #include "ngx_c_lockmutex.h"
 #include "ngx_shared_memory.h"
 
+#include "ngx_hostByte_to_netByte.h"
 //--------------------------------------------------------------------------
 //构造函数
 CSocekt::CSocekt()
@@ -701,7 +702,9 @@ void* CSocekt::ServerMoveQueueThread(void* threadData){
                 pPkgHeader->pkgLen  = htonl(pSocketObj->m_iLenPkgHeader + iSendLen); 
                 ResToNetwork* p_sendInfo = (ResToNetwork*)(p_sendbuf+pSocketObj->m_iLenMsgHeader+pSocketObj->m_iLenPkgHeader);
                 p_sendInfo->asymmetry = ans.asymmetry;//主机序得转网络序
+                p_sendInfo->asymmetry = htond(p_sendInfo->asymmetry);
                 p_sendInfo->fd = ans.fd;
+                p_sendInfo->fd = htonl(p_sendInfo->fd);
                 pPkgHeader->crc32 = p_crc32->Get_CRC((unsigned char *)p_sendInfo,iSendLen);
                 pPkgHeader->crc32  = htonl(pPkgHeader->crc32);
                 ngx_log_stderr(0, "要写入发送队列的大小为：%d",pSocketObj->m_iLenMsgHeader+pSocketObj->m_iLenPkgHeader+iSendLen);

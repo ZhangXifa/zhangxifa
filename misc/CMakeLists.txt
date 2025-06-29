@@ -5,6 +5,7 @@ set(MISC_SOURCES
     ngx_c_threadpool.cxx
     ngx_lockfree_mirrorICP_threadPool.cxx
     ngx_lockfree_asymCal_threadPool.cxx
+    ngx_lockfree_persistPool.cxx
     ngx_lockfree_threadPool.cxx
 )
 # 编译为静态库

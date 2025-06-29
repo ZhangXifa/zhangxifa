@@ -437,9 +437,10 @@ static void ngx_persist_process_cycle(int inum,const char* pprocName){
     ngx_setproctitle(pprocName);
     ngx_log_error_core(NGX_LOG_NOTICE,0,"%s %P 【persistwork进程】启动并开始运行......!",pprocName,ngx_pid);
     g_master_to_per_process_queue = open_shm_queue<MasterToPersistProcessQueue>(MASTER_TO_PERSIST_PROCESS_SHM);
-
+    static PersistProcessingPool processing(2,*g_master_to_per_process_queue);
     for(;;){
-        if(!g_master_to_per_process_queue->is_empty()){
+        sleep(1);
+        /*if(!g_master_to_per_process_queue->is_empty()){
              ResPointCloud* x = new  ResPointCloud;
              bool sig = g_master_to_per_process_queue->try_pop(*x);
              if(sig){
@@ -449,7 +450,7 @@ static void ngx_persist_process_cycle(int inum,const char* pprocName){
                 ngx_log_stderr(0, "1");
              }
              delete x;
-        }
+        }*/
     }
     return;
 }

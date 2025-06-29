@@ -9,6 +9,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/misc.dir/ngx_lockfree_asymCal_threadPool.cxx.o.d"
   "CMakeFiles/misc.dir/ngx_lockfree_mirrorICP_threadPool.cxx.o"
   "CMakeFiles/misc.dir/ngx_lockfree_mirrorICP_threadPool.cxx.o.d"
+  "CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.o"
+  "CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.o.d"
   "CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o"
   "CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o.d"
   "libmisc.a"

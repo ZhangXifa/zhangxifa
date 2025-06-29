@@ -1,2 +1,2 @@
-/usr/bin/ar qc libmisc.a CMakeFiles/misc.dir/ngx_c_crc32.cxx.o CMakeFiles/misc.dir/ngx_c_memory.cxx.o CMakeFiles/misc.dir/ngx_c_threadpool.cxx.o CMakeFiles/misc.dir/ngx_lockfree_mirrorICP_threadPool.cxx.o CMakeFiles/misc.dir/ngx_lockfree_asymCal_threadPool.cxx.o CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o
+/usr/bin/ar qc libmisc.a CMakeFiles/misc.dir/ngx_c_crc32.cxx.o CMakeFiles/misc.dir/ngx_c_memory.cxx.o CMakeFiles/misc.dir/ngx_c_threadpool.cxx.o CMakeFiles/misc.dir/ngx_lockfree_mirrorICP_threadPool.cxx.o CMakeFiles/misc.dir/ngx_lockfree_asymCal_threadPool.cxx.o CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.o CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o
 /usr/bin/ranlib libmisc.a

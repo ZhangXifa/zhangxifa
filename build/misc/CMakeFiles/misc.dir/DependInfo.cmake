@@ -13,6 +13,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/mnt/hgfs/LinuxLearning/pointServer/misc/ngx_c_threadpool.cxx" "misc/CMakeFiles/misc.dir/ngx_c_threadpool.cxx.o" "gcc" "misc/CMakeFiles/misc.dir/ngx_c_threadpool.cxx.o.d"
   "/mnt/hgfs/LinuxLearning/pointServer/misc/ngx_lockfree_asymCal_threadPool.cxx" "misc/CMakeFiles/misc.dir/ngx_lockfree_asymCal_threadPool.cxx.o" "gcc" "misc/CMakeFiles/misc.dir/ngx_lockfree_asymCal_threadPool.cxx.o.d"
   "/mnt/hgfs/LinuxLearning/pointServer/misc/ngx_lockfree_mirrorICP_threadPool.cxx" "misc/CMakeFiles/misc.dir/ngx_lockfree_mirrorICP_threadPool.cxx.o" "gcc" "misc/CMakeFiles/misc.dir/ngx_lockfree_mirrorICP_threadPool.cxx.o.d"
+  "/mnt/hgfs/LinuxLearning/pointServer/misc/ngx_lockfree_persistPool.cxx" "misc/CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.o" "gcc" "misc/CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.o.d"
   "/mnt/hgfs/LinuxLearning/pointServer/misc/ngx_lockfree_threadPool.cxx" "misc/CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o" "gcc" "misc/CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o.d"
   )
 

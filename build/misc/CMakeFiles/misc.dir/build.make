@@ -139,10 +139,24 @@ misc/CMakeFiles/misc.dir/ngx_lockfree_asymCal_threadPool.cxx.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/misc.dir/ngx_lockfree_asymCal_threadPool.cxx.s"
 	cd /mnt/hgfs/LinuxLearning/pointServer/build/misc && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /mnt/hgfs/LinuxLearning/pointServer/misc/ngx_lockfree_asymCal_threadPool.cxx -o CMakeFiles/misc.dir/ngx_lockfree_asymCal_threadPool.cxx.s
 
+misc/CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.o: misc/CMakeFiles/misc.dir/flags.make
+misc/CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.o: /mnt/hgfs/LinuxLearning/pointServer/misc/ngx_lockfree_persistPool.cxx
+misc/CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.o: misc/CMakeFiles/misc.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object misc/CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.o"
+	cd /mnt/hgfs/LinuxLearning/pointServer/build/misc && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT misc/CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.o -MF CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.o.d -o CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.o -c /mnt/hgfs/LinuxLearning/pointServer/misc/ngx_lockfree_persistPool.cxx
+
+misc/CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.i"
+	cd /mnt/hgfs/LinuxLearning/pointServer/build/misc && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /mnt/hgfs/LinuxLearning/pointServer/misc/ngx_lockfree_persistPool.cxx > CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.i
+
+misc/CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.s"
+	cd /mnt/hgfs/LinuxLearning/pointServer/build/misc && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /mnt/hgfs/LinuxLearning/pointServer/misc/ngx_lockfree_persistPool.cxx -o CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.s
+
 misc/CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o: misc/CMakeFiles/misc.dir/flags.make
 misc/CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o: /mnt/hgfs/LinuxLearning/pointServer/misc/ngx_lockfree_threadPool.cxx
 misc/CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o: misc/CMakeFiles/misc.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object misc/CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object misc/CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o"
 	cd /mnt/hgfs/LinuxLearning/pointServer/build/misc && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT misc/CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o -MF CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o.d -o CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o -c /mnt/hgfs/LinuxLearning/pointServer/misc/ngx_lockfree_threadPool.cxx
 
 misc/CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.i: cmake_force
@@ -160,6 +174,7 @@ misc_OBJECTS = \
 "CMakeFiles/misc.dir/ngx_c_threadpool.cxx.o" \
 "CMakeFiles/misc.dir/ngx_lockfree_mirrorICP_threadPool.cxx.o" \
 "CMakeFiles/misc.dir/ngx_lockfree_asymCal_threadPool.cxx.o" \
+"CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.o" \
 "CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o"
 
 # External object files for target misc
@@ -170,10 +185,11 @@ misc/libmisc.a: misc/CMakeFiles/misc.dir/ngx_c_memory.cxx.o
 misc/libmisc.a: misc/CMakeFiles/misc.dir/ngx_c_threadpool.cxx.o
 misc/libmisc.a: misc/CMakeFiles/misc.dir/ngx_lockfree_mirrorICP_threadPool.cxx.o
 misc/libmisc.a: misc/CMakeFiles/misc.dir/ngx_lockfree_asymCal_threadPool.cxx.o
+misc/libmisc.a: misc/CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.o
 misc/libmisc.a: misc/CMakeFiles/misc.dir/ngx_lockfree_threadPool.cxx.o
 misc/libmisc.a: misc/CMakeFiles/misc.dir/build.make
 misc/libmisc.a: misc/CMakeFiles/misc.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking CXX static library libmisc.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Linking CXX static library libmisc.a"
 	cd /mnt/hgfs/LinuxLearning/pointServer/build/misc && $(CMAKE_COMMAND) -P CMakeFiles/misc.dir/cmake_clean_target.cmake
 	cd /mnt/hgfs/LinuxLearning/pointServer/build/misc && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/misc.dir/link.txt --verbose=$(VERBOSE)
 

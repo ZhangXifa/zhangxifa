@@ -295,6 +295,30 @@ ngx_lockfree_mirrorICP_threadPool.cxx.s:
 	cd /mnt/hgfs/LinuxLearning/pointServer/build && $(MAKE) $(MAKESILENT) -f misc/CMakeFiles/misc.dir/build.make misc/CMakeFiles/misc.dir/ngx_lockfree_mirrorICP_threadPool.cxx.s
 .PHONY : ngx_lockfree_mirrorICP_threadPool.cxx.s
 
+ngx_lockfree_persistPool.o: ngx_lockfree_persistPool.cxx.o
+.PHONY : ngx_lockfree_persistPool.o
+
+# target to build an object file
+ngx_lockfree_persistPool.cxx.o:
+	cd /mnt/hgfs/LinuxLearning/pointServer/build && $(MAKE) $(MAKESILENT) -f misc/CMakeFiles/misc.dir/build.make misc/CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.o
+.PHONY : ngx_lockfree_persistPool.cxx.o
+
+ngx_lockfree_persistPool.i: ngx_lockfree_persistPool.cxx.i
+.PHONY : ngx_lockfree_persistPool.i
+
+# target to preprocess a source file
+ngx_lockfree_persistPool.cxx.i:
+	cd /mnt/hgfs/LinuxLearning/pointServer/build && $(MAKE) $(MAKESILENT) -f misc/CMakeFiles/misc.dir/build.make misc/CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.i
+.PHONY : ngx_lockfree_persistPool.cxx.i
+
+ngx_lockfree_persistPool.s: ngx_lockfree_persistPool.cxx.s
+.PHONY : ngx_lockfree_persistPool.s
+
+# target to generate assembly for a file
+ngx_lockfree_persistPool.cxx.s:
+	cd /mnt/hgfs/LinuxLearning/pointServer/build && $(MAKE) $(MAKESILENT) -f misc/CMakeFiles/misc.dir/build.make misc/CMakeFiles/misc.dir/ngx_lockfree_persistPool.cxx.s
+.PHONY : ngx_lockfree_persistPool.cxx.s
+
 ngx_lockfree_threadPool.o: ngx_lockfree_threadPool.cxx.o
 .PHONY : ngx_lockfree_threadPool.o
 
@@ -347,6 +371,9 @@ help:
 	@echo "... ngx_lockfree_mirrorICP_threadPool.o"
 	@echo "... ngx_lockfree_mirrorICP_threadPool.i"
 	@echo "... ngx_lockfree_mirrorICP_threadPool.s"
+	@echo "... ngx_lockfree_persistPool.o"
+	@echo "... ngx_lockfree_persistPool.i"
+	@echo "... ngx_lockfree_persistPool.s"
 	@echo "... ngx_lockfree_threadPool.o"
 	@echo "... ngx_lockfree_threadPool.i"
 	@echo "... ngx_lockfree_threadPool.s"

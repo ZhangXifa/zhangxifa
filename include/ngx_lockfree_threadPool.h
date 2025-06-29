@@ -112,5 +112,16 @@ class ResultProcessingPool : public ThreadPool{
         LockFreeQueue<ResPointCloud,QUEUE_SIZE>& output_queue_;
 };
 
+//持久化进程模块的线程池
+class PersistProcessingPool : public ThreadPool{
+    public:
+        PersistProcessingPool(size_t thread_count, LockFreeQueue<ResPointCloud,QUEUE_SIZE>& input_queue);
+        bool get_task(Task& task) override;
+    private:
+        bool process_data(ResPointCloud data);
+        //输入队列
+        LockFreeQueue<ResPointCloud, QUEUE_SIZE>& input_queue_;
+};
+
 
 #endif // NGX_LOCKFREE_MIRRORICP_THREADPOOL_H

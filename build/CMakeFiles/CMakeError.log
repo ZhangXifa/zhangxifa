@@ -1,25 +1,25 @@
 Performing C SOURCE FILE Test CMAKE_HAVE_LIBC_PTHREAD failed with the following output:
-Change Dir: /mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-S3TgEL
+Change Dir: /mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-wiBdW8
 
-Run Build Command(s):/usr/bin/make -f Makefile cmTC_dc040/fast && /usr/bin/make  -f CMakeFiles/cmTC_dc040.dir/build.make CMakeFiles/cmTC_dc040.dir/build
-make[1]: Entering directory '/mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-S3TgEL'
-Building C object CMakeFiles/cmTC_dc040.dir/src.c.o
-/usr/bin/cc -DCMAKE_HAVE_LIBC_PTHREAD   -o CMakeFiles/cmTC_dc040.dir/src.c.o -c /mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-S3TgEL/src.c
-Linking C executable cmTC_dc040
-/usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_dc040.dir/link.txt --verbose=1
-/usr/bin/cc CMakeFiles/cmTC_dc040.dir/src.c.o -o cmTC_dc040 
-CMakeFiles/cmTC_dc040.dir/src.c.o: In function `main':
+Run Build Command(s):/usr/bin/make -f Makefile cmTC_c8182/fast && /usr/bin/make  -f CMakeFiles/cmTC_c8182.dir/build.make CMakeFiles/cmTC_c8182.dir/build
+make[1]: Entering directory '/mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-wiBdW8'
+Building C object CMakeFiles/cmTC_c8182.dir/src.c.o
+/usr/bin/cc -DCMAKE_HAVE_LIBC_PTHREAD   -o CMakeFiles/cmTC_c8182.dir/src.c.o -c /mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-wiBdW8/src.c
+Linking C executable cmTC_c8182
+/usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_c8182.dir/link.txt --verbose=1
+/usr/bin/cc CMakeFiles/cmTC_c8182.dir/src.c.o -o cmTC_c8182 
+CMakeFiles/cmTC_c8182.dir/src.c.o: In function `main':
 src.c:(.text+0x3c): undefined reference to `pthread_create'
 src.c:(.text+0x48): undefined reference to `pthread_detach'
 src.c:(.text+0x54): undefined reference to `pthread_cancel'
 src.c:(.text+0x65): undefined reference to `pthread_join'
 src.c:(.text+0x79): undefined reference to `pthread_atfork'
 collect2: error: ld returned 1 exit status
-CMakeFiles/cmTC_dc040.dir/build.make:98: recipe for target 'cmTC_dc040' failed
-make[1]: *** [cmTC_dc040] Error 1
-make[1]: Leaving directory '/mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-S3TgEL'
-Makefile:127: recipe for target 'cmTC_dc040/fast' failed
-make: *** [cmTC_dc040/fast] Error 2
+CMakeFiles/cmTC_c8182.dir/build.make:98: recipe for target 'cmTC_c8182' failed
+make[1]: *** [cmTC_c8182] Error 1
+make[1]: Leaving directory '/mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-wiBdW8'
+Makefile:127: recipe for target 'cmTC_c8182/fast' failed
+make: *** [cmTC_c8182/fast] Error 2
 
 
 Source file was:
@@ -45,22 +45,22 @@ int main(void)
 
 
 Determining if the function pthread_create exists in the pthreads failed with the following output:
-Change Dir: /mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-pDTXth
+Change Dir: /mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-gqm8Em
 
-Run Build Command(s):/usr/bin/make -f Makefile cmTC_94f85/fast && /usr/bin/make  -f CMakeFiles/cmTC_94f85.dir/build.make CMakeFiles/cmTC_94f85.dir/build
-make[1]: Entering directory '/mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-pDTXth'
-Building C object CMakeFiles/cmTC_94f85.dir/CheckFunctionExists.c.o
-/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=pthread_create -o CMakeFiles/cmTC_94f85.dir/CheckFunctionExists.c.o -c /mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-pDTXth/CheckFunctionExists.c
-Linking C executable cmTC_94f85
-/usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_94f85.dir/link.txt --verbose=1
-/usr/bin/cc  -DCHECK_FUNCTION_EXISTS=pthread_create CMakeFiles/cmTC_94f85.dir/CheckFunctionExists.c.o -o cmTC_94f85  -lpthreads 
+Run Build Command(s):/usr/bin/make -f Makefile cmTC_21090/fast && /usr/bin/make  -f CMakeFiles/cmTC_21090.dir/build.make CMakeFiles/cmTC_21090.dir/build
+make[1]: Entering directory '/mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-gqm8Em'
+Building C object CMakeFiles/cmTC_21090.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=pthread_create -o CMakeFiles/cmTC_21090.dir/CheckFunctionExists.c.o -c /mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-gqm8Em/CheckFunctionExists.c
+Linking C executable cmTC_21090
+/usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_21090.dir/link.txt --verbose=1
+/usr/bin/cc  -DCHECK_FUNCTION_EXISTS=pthread_create CMakeFiles/cmTC_21090.dir/CheckFunctionExists.c.o -o cmTC_21090  -lpthreads 
 /usr/bin/ld: cannot find -lpthreads
 collect2: error: ld returned 1 exit status
-CMakeFiles/cmTC_94f85.dir/build.make:98: recipe for target 'cmTC_94f85' failed
-make[1]: *** [cmTC_94f85] Error 1
-make[1]: Leaving directory '/mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-pDTXth'
-Makefile:127: recipe for target 'cmTC_94f85/fast' failed
-make: *** [cmTC_94f85/fast] Error 2
+CMakeFiles/cmTC_21090.dir/build.make:98: recipe for target 'cmTC_21090' failed
+make[1]: *** [cmTC_21090] Error 1
+make[1]: Leaving directory '/mnt/hgfs/LinuxLearning/pointServer/build/CMakeFiles/CMakeScratch/TryCompile-gqm8Em'
+Makefile:127: recipe for target 'cmTC_21090/fast' failed
+make: *** [cmTC_21090/fast] Error 2
 
 
 

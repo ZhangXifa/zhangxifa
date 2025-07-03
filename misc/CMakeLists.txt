@@ -22,6 +22,7 @@ target_link_libraries(misc PUBLIC
     ${PCL_LIBRARIES}
     draco::draco
     rt
+    persist
 )
 
 # 安装规则（可选）

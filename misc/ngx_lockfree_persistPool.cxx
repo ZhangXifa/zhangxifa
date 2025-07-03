@@ -1,4 +1,6 @@
 #include "ngx_lockfree_threadPool.h"
+#include "ngx_mysql_connection.h"
+#include "ngx_mysql_connection_pool.h"
 
 PersistProcessingPool::PersistProcessingPool(size_t thread_count, LockFreeQueue<ResPointCloud,QUEUE_SIZE>& input_queue)
                 :ThreadPool(thread_count,"PersistProcessing"), input_queue_(input_queue){
@@ -20,7 +22,12 @@ bool PersistProcessingPool::get_task(Task& task){
     return false;
  }
  bool PersistProcessingPool::process_data(ResPointCloud data){
-    double y = data.asymmetry;
-    ngx_log_stderr(0, "不对称度为：%f",y);
-    return true;
+    Connection conn;
+    MySQLConnectionPool *cp = MySQLConnectionPool::getConnectionPool();
+    char sql[1024] = { 0 };
+    sprintf(sql, "insert into user(name,age,sex) values('%s',%d,'%s')",
+			"zhang san", static_cast<int>(data.asymmetry), "male");
+		//获取连接
+		std::shared_ptr<Connection> sp = cp->getConnection();
+		sp->update(sql);
  }

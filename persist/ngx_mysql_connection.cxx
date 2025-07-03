@@ -1,4 +1,3 @@
-#include "public.h"
 #include "ngx_mysql_connection.h"
 #include "ngx_func.h"
 

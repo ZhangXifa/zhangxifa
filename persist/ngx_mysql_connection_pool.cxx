@@ -1,5 +1,4 @@
 #include "ngx_mysql_connection_pool.h"
-#include "public.h"
 #include "ngx_func.h"
 
 // 线程安全的懒汉单例函数接口

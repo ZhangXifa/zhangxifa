@@ -31,3 +31,4 @@ bool PersistProcessingPool::get_task(Task& task){
 		std::shared_ptr<Connection> sp = cp->getConnection();
 		sp->update(sql);
  }
+ 

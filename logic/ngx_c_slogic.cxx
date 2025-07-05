@@ -226,34 +226,42 @@ void CLogicSocket::SendNoBodyPkgToClient(LPSTRUC_MSG_HEADER pMsgHeader,unsigned 
     }
     
 }*/
-bool CLogicSocket::_PCDtest(lpngx_connection_t pConn,LPSTRUC_MSG_HEADER pMsgHeader,char *pPkgBody,uint32_t iBodyLength){
-    if(pPkgBody == NULL)
-    {        
+bool CLogicSocket::_PCDtest(lpngx_connection_t pConn, LPSTRUC_MSG_HEADER pMsgHeader, char *pPkgBody, uint32_t iBodyLength) {
+    if (pPkgBody == NULL || iBodyLength < sizeof(PointCloud)) {
+        ngx_log_stderr(0, "无效数据或长度不足");
         return false;
-    }		    
-    CLock lock(&pConn->logicPorcMutex);
-    // 解压点云数据
-        /*auto point_cloud = decompressPointCloud(pPkgBody,iBodyLength);
-        if (!point_cloud) {
-            ngx_log_stderr(0,"点云解压失败.");
-            return false;
-        }
-        ngx_log_stderr(0,"点云解压成功！");
-        // 保存为PCD文件
-        saveAsPCD(*point_cloud, "received_point_cloud.pcd");*/
-        PointCloud pc;
-        memcpy(pc.serializedData, pPkgBody, iBodyLength);
-        pc.dataLen=iBodyLength;
-        pc.fd = pConn->fd;
-        if (!g_net_to_master_queue->try_push(std::move(pc))) {
-            ngx_log_stderr(0, "队列已满，丢弃点云数据");
-            return false;
-        }
-        //加锁？
-        fdToConn[pc.fd] = pConn;
-        ngx_log_error_core(NGX_LOG_INFO, 0, "成功写入队列");
+    }
 
-        return true;
+    CLock lock(&pConn->logicPorcMutex);
+
+    // 映射接收数据到结构体
+    PointCloud* recvpc = reinterpret_cast<PointCloud*>(pPkgBody);
+    PointCloud pc;
+
+    // 处理dataLen（网络字节序 -> 主机字节序）
+    pc.dataLen = ntohl(recvpc->dataLen);
+    if (pc.dataLen > sizeof(pc.serializedData)) {
+        ngx_log_stderr(0, "点云数据超过1MB限制");
+        return false;
+    }
+
+    // 拷贝数据
+    memcpy(pc.serializedData, recvpc->serializedData, pc.dataLen);
+    strncpy(pc.ID, recvpc->ID, sizeof(pc.ID) - 1);
+    pc.ID[sizeof(pc.ID) - 1] = '\0';
+    pc.fd = pConn->fd;
+
+    // 写入队列
+    if (!g_net_to_master_queue->try_push(std::move(pc))) {
+        ngx_log_stderr(0, "队列已满，丢弃点云数据");
+        return false;
+    }
+
+    // 记录连接信息（需确保线程安全）
+    fdToConn[pc.fd] = pConn;
+    ngx_log_error_core(NGX_LOG_INFO, 0, "成功写入队列");
+
+    return true;
 }
 
 bool CLogicSocket::_HandlePing(lpngx_connection_t pConn,LPSTRUC_MSG_HEADER pMsgHeader,char *pPkgBody,uint32_t iBodyLength)

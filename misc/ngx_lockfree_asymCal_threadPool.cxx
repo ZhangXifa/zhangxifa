@@ -59,6 +59,7 @@ ResPointCloud ResultProcessingPool::process_data(MirrorICPPointCloud data){
     memcpy(res.serlizdPCdata.serializedData, pPkgBodySource, data.dataLen);
     res.serlizdPCdata.dataLen = data.dataLen;
     res.asymmetry = asymmetry;
+    memcpy(res.ID, data.ID, 7);
     ResToNetwork ans;
     ans.asymmetry = asymmetry;
     ans.fd = data.fd;

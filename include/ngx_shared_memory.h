@@ -21,9 +21,11 @@
 
 #define QUEUE_SIZE 32  // 队列大小，最好是2的幂次
 
+#pragma pack(1)
 struct PointCloud{
     char serializedData[1024*1024];
     size_t dataLen;
+    char ID[7];
     int fd;
 };
 struct MirrorICPPointCloud{
@@ -31,19 +33,21 @@ struct MirrorICPPointCloud{
     char MirrorICPSerlzdData[1024*1024];
     size_t dataLen;
     size_t MirrorICPLen;
+    char ID[7];
     int fd;
 };
 struct ResPointCloud
 {
     PointCloud serlizdPCdata;
     double asymmetry;
+    char ID[7];
 };
 struct ResToNetwork
 {
     double asymmetry;
     int fd;
 };
-
+#pragma pack()
 
 using NetworkToMasterQueue = LockFreeQueue<PointCloud,QUEUE_SIZE>;
 using MasterToMirorProcessQueue = LockFreeQueue<PointCloud,QUEUE_SIZE>;

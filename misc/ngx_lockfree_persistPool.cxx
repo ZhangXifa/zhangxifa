@@ -25,8 +25,8 @@ bool PersistProcessingPool::get_task(Task& task){
     Connection conn;
     MySQLConnectionPool *cp = MySQLConnectionPool::getConnectionPool();
     char sql[1024] = { 0 };
-    sprintf(sql, "insert into user(name,age,sex) values('%s',%d,'%s')",
-			data.ID, static_cast<int>(data.asymmetry), "male");
+    sprintf(sql, "insert into user(IDC,asymmetry,pc_data_path) values('%s',%f,'%s')",
+			data.ID, data.asymmetry, "D:/");
 		//获取连接
 		std::shared_ptr<Connection> sp = cp->getConnection();
 		sp->update(sql);

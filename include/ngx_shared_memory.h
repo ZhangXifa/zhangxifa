@@ -126,3 +126,15 @@ void destroy_shm_queue(T* queue, const char* shm_name) {
 }
 
 #endif // NGX_SHARED_MEMORY_H
+/*
+创建表
+CREATE TABLE user (
+    id INT PRIMARY KEY AUTO_INCREMENT,  -- 可选的自增主键
+    IDC CHAR(7) NOT NULL,                  -- 固定长度为7的字符ID
+    asymmetry DOUBLE NOT NULL,              -- 存储双精度浮点数
+    pc_data_path TEXT NOT NULL,  
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- 可选：创建时间
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP   -- 可选：更新时间
+);
+CREATE INDEX idx_respointcloud_id ON ResPointCloud (ID);
+*/

@@ -13,6 +13,7 @@
 
 #include "ngx_lockfree_threadPool.h"
 
+#include "ngx_mysql_connection.h"
 //函数声明
 static void ngx_start_worker_processes();
 //网络模块：点云接收
@@ -437,6 +438,7 @@ static void ngx_persist_process_cycle(int inum,const char* pprocName){
     ngx_setproctitle(pprocName);
     ngx_log_error_core(NGX_LOG_NOTICE,0,"%s %P 【persistwork进程】启动并开始运行......!",pprocName,ngx_pid);
     g_master_to_per_process_queue = open_shm_queue<MasterToPersistProcessQueue>(MASTER_TO_PERSIST_PROCESS_SHM);
+    Connection conn;//mysql_init()并不是线程安全，在程序初始化的时候调用一次，之后线程安全
     static PersistProcessingPool processing(2,*g_master_to_per_process_queue);
     for(;;){
         sleep(1);

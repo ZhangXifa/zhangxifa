@@ -38,7 +38,7 @@ static const handler statusHandler[] =
 {
     //数组前5个元素，保留，以备将来增加一些基本服务器功能
     &CLogicSocket::_HandlePing,                             //【0】：心跳包的实现
-    &CLogicSocket::_PCDtest,                                //网络模块：接收点云
+    &CLogicSocket::_PCDreceive,                                //网络模块：接收点云
     NULL,                                                   //【2】：下标从0开始
     NULL,                                                   //【3】：下标从0开始
     NULL,                                                   //【4】：下标从0开始
@@ -226,7 +226,7 @@ void CLogicSocket::SendNoBodyPkgToClient(LPSTRUC_MSG_HEADER pMsgHeader,unsigned 
     }
     
 }*/
-bool CLogicSocket::_PCDtest(lpngx_connection_t pConn, LPSTRUC_MSG_HEADER pMsgHeader, char *pPkgBody, uint32_t iBodyLength) {
+bool CLogicSocket::_PCDreceive(lpngx_connection_t pConn, LPSTRUC_MSG_HEADER pMsgHeader, char *pPkgBody, uint32_t iBodyLength) {
     if (pPkgBody == NULL || iBodyLength < sizeof(PointCloud)) {
         ngx_log_stderr(0, "无效数据或长度不足");
         return false;

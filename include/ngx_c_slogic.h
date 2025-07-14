@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <string>
 
 class CLogicSocket : public CSocekt   //继承自父类CScoekt
 {
@@ -25,6 +26,8 @@ public:
 	//各种业务逻辑相关函数都在之类
 	bool _HandlePing(lpngx_connection_t pConn,LPSTRUC_MSG_HEADER pMsgHeader,char *pPkgBody,uint32_t iBodyLength);
 	bool _PCDreceive(lpngx_connection_t pConn,LPSTRUC_MSG_HEADER pMsgHeader,char *pPkgBody,uint32_t iBodyLength);
+	bool _PCDsend(lpngx_connection_t pConn,LPSTRUC_MSG_HEADER pMsgHeader,char *pPkgBody,uint32_t iBodyLength);
+	double getAsymmetryByIDC(const std::string& idcValue);
 
 	
 

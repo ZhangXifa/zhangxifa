@@ -14,20 +14,15 @@
 //结构定义------------------------------------
 #pragma pack (1) //对齐方式,1字节对齐【结构之间成员不做任何字节对齐：紧密的排列在一起】
 
-typedef struct _STRUCT_REGISTER
+typedef struct _STRUCT_ID
 {
-	int           iType;          //类型
-	char          username[56];   //用户名 
-	char          password[40];   //密码
+	char ID[7];
+}STRUCT_ID, *LPSTRUCT_ID;
 
-}STRUCT_REGISTER, *LPSTRUCT_REGISTER;
-
-typedef struct _STRUCT_LOGIN
+typedef struct _STRUCT_ASY
 {
-	char          username[56];   //用户名 
-	char          password[40];   //密码
-
-}STRUCT_LOGIN, *LPSTRUCT_LOGIN;
+	double asymmetry;
+}STRUCT_ASY, *LPSTRUCT_ASY;
 
 
 #pragma pack() //取消指定对齐，恢复缺省对齐

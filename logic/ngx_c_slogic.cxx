@@ -27,6 +27,11 @@
 #include "ngx_c_lockmutex.h"  
 #include "ngx_shared_memory.h"
 
+#include "ngx_mysql_connection.h"
+#include "ngx_mysql_connection_pool.h"
+#include <memory>
+#include "ngx_hostByte_to_netByte.h"
+
 //定义成员函数指针
 typedef bool (CLogicSocket::*handler)(  lpngx_connection_t pConn,      //连接池中连接的指针
                                         LPSTRUC_MSG_HEADER pMsgHeader,  //消息头指针
@@ -37,9 +42,9 @@ typedef bool (CLogicSocket::*handler)(  lpngx_connection_t pConn,      //连接�
 static const handler statusHandler[] = 
 {
     //数组前5个元素，保留，以备将来增加一些基本服务器功能
-    &CLogicSocket::_HandlePing,                             //【0】：心跳包的实现
+    &CLogicSocket::_HandlePing,                                //心跳包的实现
     &CLogicSocket::_PCDreceive,                                //网络模块：接收点云
-    NULL,                                                   //【2】：下标从0开始
+    &CLogicSocket::_PCDsend,                                                   //【2】：下标从0开始
     NULL,                                                   //【3】：下标从0开始
     NULL,                                                   //【4】：下标从0开始
     NULL,                         
@@ -172,60 +177,6 @@ void CLogicSocket::SendNoBodyPkgToClient(LPSTRUC_MSG_HEADER pMsgHeader,unsigned 
     msgSend(p_sendbuf);
     return;
 }
-
-//----------------------------------------------------------------------------------------------------------
-//处理各种业务逻辑
-/*std::unique_ptr<draco::PointCloud> CLogicSocket::decompressPointCloud(char *pPkgBody,uint32_t iBodyLength){
-    draco::DecoderBuffer buffer;
-    buffer.Init(pPkgBody,iBodyLength);
-    draco::Decoder decoder;
-        auto statusor = decoder.DecodePointCloudFromBuffer(&buffer);
-        if (!statusor.ok()) {
-            ngx_log_stderr(0,"解压失败.");
-            return nullptr;
-        }
-
-        ngx_log_stderr(0,"解压成功.");
-        return std::move(statusor).value();
-}*/
-/*void CLogicSocket::saveAsPCD(const draco::PointCloud& draco_cloud, const std::string& filename) {
-    // 创建PCL点云对象
-    pcl::PointCloud<pcl::PointXYZ> pcl_cloud;
-    pcl_cloud.width = draco_cloud.num_points();
-    pcl_cloud.height = 1;
-    pcl_cloud.is_dense = false;
-    pcl_cloud.points.resize(draco_cloud.num_points());
-
-    // 获取位置属性
-    const draco::PointAttribute* pos_attr = draco_cloud.GetNamedAttribute(draco::GeometryAttribute::POSITION);
-    if (!pos_attr) {
-        ngx_log_stderr(0,"无法获取属性");
-        return;
-    }
-
-    // 转换数据到PCL格式
-    for (uint32_t i = 0; i < draco_cloud.num_points(); ++i) {
-        draco::PointIndex point_index(i);  // 创建PointIndex对象
-        float pos[3];
-        pos_attr->GetMappedValue(point_index, pos);
-        pcl_cloud.points[i].x = pos[0];
-        pcl_cloud.points[i].y = pos[1];
-        pcl_cloud.points[i].z = pos[2];
-    }
-    // 写入共享内存队列
-    if (!g_net_to_master_queue->try_push(pcl_cloud)) {
-        ngx_log_stderr(0, "队列已满，丢弃点云数据（点数：%d）", pcl_cloud.size());
-        return;
-    }
-
-    ngx_log_error_core(NGX_LOG_INFO, 0, "成功写入队列");
-    // 保存为PCD文件
-    if (pcl::io::savePCDFileBinary(filename, pcl_cloud) == -1) {
-        ngx_log_stderr(0,"保存失败.");
-        return;
-    }
-    
-}*/
 bool CLogicSocket::_PCDreceive(lpngx_connection_t pConn, LPSTRUC_MSG_HEADER pMsgHeader, char *pPkgBody, uint32_t iBodyLength) {
     if (pPkgBody == NULL || iBodyLength < sizeof(PointCloud)) {
         ngx_log_stderr(0, "无效数据或长度不足");
@@ -261,6 +212,82 @@ bool CLogicSocket::_PCDreceive(lpngx_connection_t pConn, LPSTRUC_MSG_HEADER pMsg
     fdToConn[pc.fd] = pConn;
     ngx_log_error_core(NGX_LOG_INFO, 0, "成功写入队列");
 
+    return true;
+}
+
+double CLogicSocket::getAsymmetryByIDC(const std::string& idcValue) {
+    MySQLConnectionPool* pool = MySQLConnectionPool::getConnectionPool();
+    std::shared_ptr<Connection> conn = pool->getConnection();
+    
+    if (!conn) {
+        ngx_log_stderr(0, "Failed to get database connection");
+        return -1.0; // 或其他错误值
+    }
+
+    
+    std::string sql = "SELECT asymmetry FROM user WHERE IDC = '" + idcValue + "'";
+    
+    MYSQL_RES* res = conn->query(sql);
+    if (!res) {
+        ngx_log_stderr(0, "Query failed");
+        return -1.0;
+    }
+
+    double asymmetry = -1.0;
+    MYSQL_ROW row;
+    if ((row = mysql_fetch_row(res))) {
+        asymmetry = atof(row[0]);
+        ngx_log_stderr(0, "mysql asymmetry:%f", asymmetry);
+    } else {
+        ngx_log_stderr(0, "No data found for IDC: %s", idcValue.c_str());
+    }
+
+    mysql_free_result(res);
+    return asymmetry;
+}
+bool CLogicSocket::_PCDsend(lpngx_connection_t pConn,LPSTRUC_MSG_HEADER pMsgHeader,char *pPkgBody,uint32_t iBodyLength){
+    //ngx_log_stderr(0,"执行了CLogicSocket::_HandleRegister()!");
+    //(1)首先判断包体的合法性
+    if(pPkgBody == NULL) //具体看客户端服务器约定，如果约定这个命令[msgCode]必须带包体，那么如果不带包体，就认为是恶意包，直接不处理    
+    {        
+        return false;
+    }
+		    
+    int iRecvLen = sizeof(STRUCT_ID); 
+    if(iRecvLen != iBodyLength) //发送过来的结构大小不对，认为是恶意包，直接不处理
+    {     
+        return false; 
+    }
+
+  
+    CLock lock(&pConn->logicPorcMutex); //凡是和本用户有关的访问都互斥
+    
+    //(3)取得了整个发送过来的数据
+    LPSTRUCT_ID p_RecvInfo = (LPSTRUCT_ID)pPkgBody;  
+    std::string IDC = p_RecvInfo->ID;
+    double asymmetry = CLogicSocket::getAsymmetryByIDC(IDC);
+	LPCOMM_PKG_HEADER pPkgHeader;	
+	CMemory  *p_memory = CMemory::GetInstance();
+	CCRC32   *p_crc32 = CCRC32::GetInstance();
+    int iSendLen = sizeof(STRUCT_ASY);  
+    char *p_sendbuf = (char *)p_memory->AllocMemory(m_iLenMsgHeader+m_iLenPkgHeader+iSendLen,false);//准备发送的格式，这里是 消息头+包头+包体
+    //b)填充消息头
+    memcpy(p_sendbuf,pMsgHeader,m_iLenMsgHeader);                   //消息头直接拷贝到这里来
+    //c)填充包头
+    pPkgHeader = (LPCOMM_PKG_HEADER)(p_sendbuf+m_iLenMsgHeader);    //指向包头
+    pPkgHeader->msgCode = _CMD_REGISTER;	                        //消息代码，可以统一在ngx_logiccomm.h中定义
+    pPkgHeader->msgCode = htons(pPkgHeader->msgCode);	            //htons主机序转网络序 
+    pPkgHeader->pkgLen  = htonl(m_iLenPkgHeader + iSendLen);        //整个包的尺寸【包头+包体尺寸】 
+    //d)填充包体
+    LPSTRUCT_ASY p_sendInfo = (LPSTRUCT_ASY)(p_sendbuf+m_iLenMsgHeader+m_iLenPkgHeader);	//跳过消息头，跳过包头，就是包体了
+    p_sendInfo->asymmetry = htond(asymmetry);
+    
+    //e)包体内容全部确定好后，计算包体的crc32值
+    pPkgHeader->crc32   = p_crc32->Get_CRC((unsigned char *)p_sendInfo,iSendLen);
+    pPkgHeader->crc32   = htonl(pPkgHeader->crc32);		
+
+    //f)发送数据包
+    msgSend(p_sendbuf);
     return true;
 }
 

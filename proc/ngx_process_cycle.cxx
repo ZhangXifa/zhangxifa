@@ -258,6 +258,7 @@ static void ngx_network_process_cycle(int inum,const char *pprocName)
     //重新为子进程设置进程名，不要与父进程重复------
     g_master_to_network_queue = open_shm_queue<MasterToNetworkQueue>(RETURN_TO_NETWORK_SHM);//这段共享内存的初始化一定要提前到线程初始化之前
     ngx_network_process_init(inum);
+    Connection conn;//mysql_init()并不是线程安全，在程序初始化的时候调用一次，之后线程安全
     ngx_setproctitle(pprocName); //设置标题   
     ngx_log_error_core(NGX_LOG_NOTICE,0,"%s %P 【network进程】启动并开始运行......!",pprocName,ngx_pid); //设置标题时顺便记录下来进程名，进程id等信息到日志
     g_net_to_master_queue = open_shm_queue<NetworkToMasterQueue>(NETWORK_TO_MASTER_SHM);
@@ -383,25 +384,6 @@ static void ngx_result_process_cycle(int inum,const char* pprocName){
     static ResultProcessingPool processing(2,*g_master_to_res_process_queue,*g_res_process_to_master_queue);
     for(;;){
         sleep(1);
-        /*if(!g_master_to_res_process_queue->is_empty()){
-             MirrorICPPointCloud* x = new  MirrorICPPointCloud;
-             bool sig = g_master_to_res_process_queue->try_pop(*x);
-             if(sig){
-                char* head1 = x->serializedData;
-                auto point_cloud1 = decompressPointCloud(head1,x->dataLen);
-                char* head2 = x->MirrorICPSerlzdData;
-                auto point_cloud2 = decompressPointCloud(head2,x->MirrorICPLen);
-                if (!point_cloud1 || !point_cloud2) {
-                       ngx_log_stderr(0,"点云解压失败.");
-                       return ;
-                }
-                ngx_log_stderr(0,"点云解压成功！");
-                saveAsPCD(*point_cloud1, "received_point_cloud1.pcd");
-                saveAsPCD(*point_cloud2, "received_point_cloud2.pcd");
-             }else{
-                ngx_log_stderr(0, "1");
-             }
-        }*/
     }
 }
 static void ngx_result_process_init(int inum){
@@ -442,17 +424,6 @@ static void ngx_persist_process_cycle(int inum,const char* pprocName){
     static PersistProcessingPool processing(2,*g_master_to_per_process_queue);
     for(;;){
         sleep(1);
-        /*if(!g_master_to_per_process_queue->is_empty()){
-             ResPointCloud* x = new  ResPointCloud;
-             bool sig = g_master_to_per_process_queue->try_pop(*x);
-             if(sig){
-                double y = x->asymmetry;
-                ngx_log_stderr(0, "不对称度为：%f",y);
-             }else{
-                ngx_log_stderr(0, "1");
-             }
-             delete x;
-        }*/
     }
     return;
 }

@@ -49,49 +49,6 @@ MasterToPersistProcessQueue* g_master_to_per_process_queue = nullptr;
 AsymmProcessToMaterQueue* g_asymm_process_to_master_queue = nullptr;
 MasterToNetworkQueue* g_master_to_network_queue = nullptr;
 
-/*std::unique_ptr<draco::PointCloud> decompressPointCloud(char *pPkgBody,uint32_t iBodyLength){
-    draco::DecoderBuffer buffer;
-    buffer.Init(pPkgBody,iBodyLength);
-    draco::Decoder decoder;
-        auto statusor = decoder.DecodePointCloudFromBuffer(&buffer);
-        if (!statusor.ok()) {
-            ngx_log_stderr(0,"解压失败.");
-            return nullptr;
-        }
-
-        ngx_log_stderr(0,"解压成功.");
-        return std::move(statusor).value();
-}
-void saveAsPCD(const draco::PointCloud& draco_cloud, const std::string& filename) {
-    // 创建PCL点云对象
-    pcl::PointCloud<pcl::PointXYZ> pcl_cloud;
-    pcl_cloud.width = draco_cloud.num_points();
-    pcl_cloud.height = 1;
-    pcl_cloud.is_dense = false;
-    pcl_cloud.points.resize(draco_cloud.num_points());
-
-    // 获取位置属性
-    const draco::PointAttribute* pos_attr = draco_cloud.GetNamedAttribute(draco::GeometryAttribute::POSITION);
-    if (!pos_attr) {
-        ngx_log_stderr(0,"无法获取属性");
-        return;
-    }
-
-    // 转换数据到PCL格式
-    for (uint32_t i = 0; i < draco_cloud.num_points(); ++i) {
-        draco::PointIndex point_index(i);  // 创建PointIndex对象
-        float pos[3];
-        pos_attr->GetMappedValue(point_index, pos);
-        pcl_cloud.points[i].x = pos[0];
-        pcl_cloud.points[i].y = pos[1];
-        pcl_cloud.points[i].z = pos[2];
-    };
-    // 保存为PCD文件
-    if (pcl::io::savePCDFileBinary(filename, pcl_cloud) == -1) {
-        ngx_log_stderr(0,"保存失败.");
-        return;
-    }
-}*/
 
 //描述：创建worker子进程
 void ngx_master_process_cycle()

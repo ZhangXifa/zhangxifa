@@ -120,7 +120,9 @@ public:
 
 private:
     bool process_data(ResPointCloud data);
-    std::string generate_unique_filename(const char* base_path, const std::string& id);
+    //std::string generate_unique_filename(const char* base_path, const std::string& id);
+    std::string generate_uuid();
+    
     
     // 输入队列
     LockFreeQueue<ResPointCloud, QUEUE_SIZE>& input_queue_;

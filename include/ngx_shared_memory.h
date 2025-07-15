@@ -130,7 +130,7 @@ void destroy_shm_queue(T* queue, const char* shm_name) {
 创建表
 CREATE TABLE user (
     id INT PRIMARY KEY AUTO_INCREMENT,  -- 可选的自增主键
-    IDC CHAR(7) NOT NULL,                  -- 固定长度为7的字符ID
+    IDC CHAR(7) NOT NULL,                  -- 固定长度为7的字符ID，将此键值设置为唯一
     asymmetry DOUBLE NOT NULL,              -- 存储双精度浮点数
     pc_data_path TEXT NOT NULL,  
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- 可选：创建时间

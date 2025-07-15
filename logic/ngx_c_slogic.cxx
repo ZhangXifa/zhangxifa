@@ -44,9 +44,9 @@ static const handler statusHandler[] =
     //数组前5个元素，保留，以备将来增加一些基本服务器功能
     &CLogicSocket::_HandlePing,                                //心跳包的实现
     &CLogicSocket::_PCDreceive,                                //网络模块：接收点云
-    &CLogicSocket::_PCDsend,                                                   //【2】：下标从0开始
-    NULL,                                                   //【3】：下标从0开始
-    NULL,                                                   //【4】：下标从0开始
+    &CLogicSocket::_PCDsend,                                   //数据库查询不对成度
+    NULL,                                                   
+    NULL,                                                   
     NULL,                         
     NULL,      
 };

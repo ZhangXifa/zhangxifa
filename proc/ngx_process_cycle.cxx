@@ -298,7 +298,7 @@ static void ngx_mirror_process_cycle(int inum,const char* pprocName){
 
     static MirrorICPProcessingPool processing(2,*g_master_to_miror_process_queue,*g_miror_process_to_master_queue);
     for(;;){
-        sleep(1);
+        sleep(1000);
     }
     return;
 }
@@ -340,7 +340,7 @@ static void ngx_result_process_cycle(int inum,const char* pprocName){
     g_asymm_process_to_master_queue = open_shm_queue<AsymmProcessToMaterQueue>(RETURN_TO_MASTER_SHM);
     static ResultProcessingPool processing(2,*g_master_to_res_process_queue,*g_res_process_to_master_queue);
     for(;;){
-        sleep(1);
+        sleep(1000);
     }
 }
 static void ngx_result_process_init(int inum){
@@ -380,7 +380,7 @@ static void ngx_persist_process_cycle(int inum,const char* pprocName){
     Connection conn;//mysql_init()并不是线程安全，在程序初始化的时候调用一次，之后线程安全
     static PersistProcessingPool processing(2,*g_master_to_per_process_queue);
     for(;;){
-        sleep(1);
+        sleep(1000);
     }
     return;
 }

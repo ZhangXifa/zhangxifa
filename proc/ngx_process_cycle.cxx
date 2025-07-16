@@ -1,11 +1,12 @@
-﻿
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>   //信号相关头文件 
 #include <errno.h>    //errno
 #include <unistd.h>
+#include <sys/wait.h>
+#include <time.h>
 
 #include "ngx_func.h"
 #include "ngx_macro.h"
@@ -14,8 +15,11 @@
 #include "ngx_lockfree_threadPool.h"
 
 #include "ngx_mysql_connection.h"
+
 //函数声明
 static void ngx_start_worker_processes();
+static void ngx_reap_children();
+static void ngx_signal_handler(int signo);
 //网络模块：点云接收
 static int ngx_spawn_process(int procNum,const char *pprocName);
 static void ngx_network_process_cycle(int inum,const char *pprocName);
@@ -38,6 +42,27 @@ static void ngx_persist_process_init(int inum);
 
 //变量声明
 static u_char  master_process[] = "master process";
+
+// 子进程信息结构体
+typedef struct {
+    pid_t       pid;     // 进程ID
+    int         status;  // 进程状态
+    time_t      spawn_time; // 创建时间
+    int         respawn; // 是否需要重启标志
+    const char* name;    // 进程名称
+    int         (*spawn_func)(int, const char*); // 创建函数
+    int         proc_num; // 进程编号
+} ngx_process_t;
+
+// 子进程数组
+static ngx_process_t ngx_processes[] = {
+    { -1, 0, 0, 1, "network process", ngx_spawn_process, 1 },
+    { -1, 0, 0, 1, "mirror process", ngx_mirror_process, 2 },
+    { -1, 0, 0, 1, "result process", ngx_result_process, 3 },
+    { -1, 0, 0, 1, "persist process", ngx_persist_process, 4 },
+    { 0, 0, 0, 0, NULL, NULL, 0 } // 结束标记
+};
+
 // 实际定义全局变量
 NetworkToMasterQueue* g_net_to_master_queue = nullptr;
 MasterToMirorProcessQueue* g_master_to_miror_process_queue = nullptr;
@@ -49,11 +74,25 @@ MasterToPersistProcessQueue* g_master_to_per_process_queue = nullptr;
 AsymmProcessToMaterQueue* g_asymm_process_to_master_queue = nullptr;
 MasterToNetworkQueue* g_master_to_network_queue = nullptr;
 
-
 //描述：创建worker子进程
 void ngx_master_process_cycle()
 {    
     sigset_t set;        //信号集
+    struct sigaction sa;
+
+    // 设置信号处理函数
+    memset(&sa, 0, sizeof(struct sigaction));
+    sa.sa_handler = ngx_signal_handler;
+    sigemptyset(&sa.sa_mask);
+
+    if (sigaction(SIGCHLD, &sa, NULL) == -1 ||
+        sigaction(SIGTERM, &sa, NULL) == -1 ||
+        sigaction(SIGQUIT, &sa, NULL) == -1 ||
+        sigaction(SIGHUP, &sa, NULL) == -1 ||
+        sigaction(SIGINT, &sa, NULL) == -1) {
+        ngx_log_error_core(NGX_LOG_ALERT, errno, "sigaction() failed");
+        exit(1);
+    }
 
     sigemptyset(&set);   //清空信号集
 
@@ -73,7 +112,7 @@ void ngx_master_process_cycle()
     
     //设置，此时无法接受的信号；阻塞期间，你发过来的上述信号，多个会被合并为一个，暂存着，等你放开信号屏蔽后才能收到这些信号。。。
     //sigprocmask()在第三章第五节详细讲解过
-    if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) //第一个参数用了SIG_BLOCK表明设置 进程 新的信号屏蔽字 为 “当前信号屏蔽字 和 第二个参数指向的信号集的并集
+    if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) //第一个参数用了SIG_BLOCK表明设置 进程 新的信号屏蔽字 为 "当前信号屏蔽字 和 第二个参数指向的信号集的并集
     {        
         ngx_log_error_core(NGX_LOG_ALERT,errno,"ngx_master_process_cycle()中sigprocmask()失败!");
     }
@@ -122,8 +161,18 @@ void ngx_master_process_cycle()
     
     for ( ;; ) 
     {
+        // 收割已退出的子进程
+        ngx_reap_children();
+        
+        // 检查并重启需要重启的进程
+        for (ngx_process_t *proc = ngx_processes; proc->name != NULL; proc++) {
+            if (proc->pid == -1 && proc->respawn) {
+                ngx_log_error_core(NGX_LOG_NOTICE, 0, "重启 %s 进程...", proc->name);
+                proc->pid = proc->spawn_func(proc->proc_num, proc->name);
+                proc->spawn_time = time(NULL);
+            }
+        }
 
-    
         //sigsuspend(&set); //阻塞在这里，等待一个信号，此时进程是挂起的，不占用cpu时间，只有收到信号才会被唤醒（返回）；
         // 数据转发核心逻辑
         PointCloud cloud;
@@ -164,18 +213,98 @@ void ngx_master_process_cycle()
              usleep(1000);
         }
 
+        // 短暂休眠，避免CPU占用过高
+        usleep(10000);
     }// end for(;;)
      return;
+}
+
+// 新增：收割子进程
+static void ngx_reap_children() {
+    int status;
+    pid_t pid;
+
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        for (ngx_process_t *proc = ngx_processes; proc->name != NULL; proc++) {
+            if (proc->pid == pid) {
+                ngx_log_error_core(NGX_LOG_NOTICE, 0, "%s 进程 %P 退出, 状态: %d", 
+                                  proc->name, pid, status);
+                
+                // 标记进程为已退出
+                proc->pid = -1;
+                
+                // 如果不是正常退出，设置需要重启
+                if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+                    proc->respawn = 1;
+                }
+                break;
+            }
+        }
+    }
+
+    if (pid == -1 && errno != ECHILD) {
+        ngx_log_error_core(NGX_LOG_ALERT, errno, "waitpid() failed");
+    }
+}
+
+// 新增：信号处理函数
+static void ngx_signal_handler(int signo) {
+    switch (signo) {
+    case SIGCHLD:
+        // 子进程状态变化，在主循环中处理
+        break;
+        
+    case SIGTERM:
+    case SIGQUIT:
+    case SIGINT:
+        // 退出信号，终止所有子进程
+        ngx_log_error_core(NGX_LOG_NOTICE, 0, "收到终止信号 %d，开始关闭所有子进程...", signo);
+        
+        for (ngx_process_t *proc = ngx_processes; proc->name != NULL; proc++) {
+            if (proc->pid > 0) {
+                kill(proc->pid, SIGTERM);
+            }
+        }
+        
+        // 等待所有子进程退出
+        int live_children;
+        do {
+            live_children = 0;
+            for (ngx_process_t *proc = ngx_processes; proc->name != NULL; proc++) {
+                if (proc->pid > 0) {
+                    live_children = 1;
+                    break;
+                }
+            }
+            
+            if (live_children) {
+                sleep(1);
+                ngx_reap_children();
+            }
+        } while (live_children);
+        
+        ngx_log_error_core(NGX_LOG_NOTICE, 0, "所有子进程已关闭，主进程退出");
+        exit(0);
+        
+    case SIGHUP:
+        // 重新加载配置
+        ngx_log_error_core(NGX_LOG_NOTICE, 0, "收到重新加载信号");
+        // TODO: 实现配置重载逻辑
+        break;
+        
+    default:
+        break;
+    }
 }
 
 //描述：根据给定的参数创建指定数量的子进程，因为以后可能要扩展功能，增加参数，所以单独写成一个函数
 //threadnums:要创建的子进程数量
 static void ngx_start_worker_processes()
 {
-    ngx_spawn_process(1,"network process");
-    ngx_mirror_process(2,"mirror process");
-    ngx_result_process(3,"result process");
-    ngx_persist_process(4,"persult process");
+    for (ngx_process_t *proc = ngx_processes; proc->name != NULL; proc++) {
+        proc->pid = proc->spawn_func(proc->proc_num, proc->name);
+        proc->spawn_time = time(NULL);
+    }
     return;
 }
 
@@ -207,6 +336,7 @@ static int ngx_spawn_process(int procNum,const char *pprocName)
     //若有需要，以后再扩展增加其他代码......
     return pid;
 }
+
 static void ngx_network_process_cycle(int inum,const char *pprocName) 
 {
     //设置一下变量
@@ -221,13 +351,7 @@ static void ngx_network_process_cycle(int inum,const char *pprocName)
     g_net_to_master_queue = open_shm_queue<NetworkToMasterQueue>(NETWORK_TO_MASTER_SHM);
     for(;;)
     {
-
-      
-
         ngx_process_events_and_timers(); //处理网络事件和定时器事件
-
-     
-
     } //end for(;;)
 
     //如果从这个循环跳出来
@@ -287,6 +411,7 @@ static int ngx_mirror_process(int procNum,const char* pprocName){
     }
     return pid;
 }
+
 static void ngx_mirror_process_cycle(int inum,const char* pprocName){
     ngx_process = NGX_PROCESS_WORKER;
 
@@ -302,6 +427,7 @@ static void ngx_mirror_process_cycle(int inum,const char* pprocName){
     }
     return;
 }
+
 static void ngx_mirror_process_init(int inum){
     sigset_t  set;      //信号集
 
@@ -310,8 +436,8 @@ static void ngx_mirror_process_init(int inum){
     {
         ngx_log_error_core(NGX_LOG_ALERT,errno,"ngx_mirror_process_init()中sigprocmask()失败!");
     }
-
 }
+
 static int ngx_result_process(int procNum,const char* pprocName){
     pid_t pid;
     pid = fork();
@@ -329,6 +455,7 @@ static int ngx_result_process(int procNum,const char* pprocName){
     }
     return pid;
 }
+
 static void ngx_result_process_cycle(int inum,const char* pprocName){
     ngx_process = NGX_PROCESS_WORKER;
 
@@ -343,6 +470,7 @@ static void ngx_result_process_cycle(int inum,const char* pprocName){
         sleep(1000);
     }
 }
+
 static void ngx_result_process_init(int inum){
     sigset_t  set;      //信号集
 
@@ -370,6 +498,7 @@ static int ngx_persist_process(int procNum,const char* pprocName){
     }
     return pid;
 }
+
 static void ngx_persist_process_cycle(int inum,const char* pprocName){
     ngx_process = NGX_PROCESS_WORKER;
 
@@ -384,6 +513,7 @@ static void ngx_persist_process_cycle(int inum,const char* pprocName){
     }
     return;
 }
+
 static void ngx_persist_process_init(int inum){
     sigset_t  set;      //信号集
 

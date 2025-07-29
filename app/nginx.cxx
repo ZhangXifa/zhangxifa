@@ -84,7 +84,7 @@ int main(int argc, char *const *argv)
     //(2.1)内存单例类可以在这里初始化，返回值不用保存
     CMemory::GetInstance();	
     //(2.2)crc32校验算法单例类可以在这里初始化，返回值不用保存
-    CCRC32::GetInstance();
+    CCRC32::GetInstance(); //可以单独放在网络I/O模块中，感觉没有必要在这里初始化？
         
     //(3)一些必须事先准备好的资源，先初始化
     ngx_log_init();             //日志初始化(创建/打开日志文件)，这个需要配置项，所以必须放配置文件载入的后边；     
@@ -95,7 +95,7 @@ int main(int argc, char *const *argv)
         exitcode = 1;
         goto lblexit;
     }        
-    if(g_socket.Initialize() == false)//初始化socket
+    if(g_socket.Initialize() == false)//初始化socket 这个也可以放到网络模块？
     {
         exitcode = 1;
         goto lblexit;

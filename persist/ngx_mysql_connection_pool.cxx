@@ -95,11 +95,52 @@ MySQLConnectionPool::MySQLConnectionPool()
 
 	// 启动一个新的线程，作为连接的生产者 linux thread => pthread_create
 	std::thread produce(std::bind(&MySQLConnectionPool::produceConnectionTask, this));
+	//C++11的thread函数底层还是调用pthread_create，只是封装了一下，方便使用
 	produce.detach();
-
+	/*
+		函数原型：
+			// C++11 std::thread构造函数
+			template<class Function, class... Args>
+			explicit thread(Function&& f, Args&&... args);
+		这里也可以不使用bind：
+			1.使用lambda表达式
+				std::thread produce([this]() {
+    				this->produceConnectionTask();});
+			2.使用函数指针
+				std::thread produce(&MySQLConnectionPool::produceConnectionTask, this);
+			3.使用std::ref()
+				std::thread produce(std::mem_fn(&MySQLConnectionPool::produceConnectionTask), this);
+		
+	*/
 	// 启动一个新的定时线程，扫描超过maxIdleTime时间的空闲连接，进行对于的连接回收
 	std::thread scanner(std::bind(&MySQLConnectionPool::scannerConnectionTask, this));
 	scanner.detach();
+	/*
+		使用detach和不使用detach的区别：
+		使用detach：
+			线程分离 ：线程创建后立即与主线程分离，独立运行
+			无需保存句柄 ：不需要保存 std::thread 对象，节省内存
+			不能join ：分离后的线程无法再调用 join()
+			资源自动回收 ：线程结束时系统自动回收资源
+			异步创建，同步销毁 ：通过条件变量等机制实现精确的生命周期控制
+		不使用detach：
+			线程关联 ：线程对象与主线程保持关联
+			必须保存句柄 ：需要保存 std::thread 对象用于后续管理
+			必须join或detach ：析构前必须调用 join() 或 detach() ，否则程序终止
+			主动等待 ：通过 join() 主动等待线程完成
+			资源手动管理 ：需要显式管理线程生命周期
+		detach适用于：
+			后台服务线程 ：如连接池维护、定时清理
+			事件驱动系统 ：需要长期运行的监听线程
+			资源受限环境 ：需要最小化内存占用
+		不使用detach()适用于：
+			任务处理线程池 ：需要等待所有任务完成
+			批量计算 ：需要确保所有计算线程完成后再继续
+			简单同步需求 ：直接使用join()等待即可
+		detach对主线程的影响：
+			使用和不使用detach在创还能和运行时都不会阻塞主线程，但在细狗时，因为不使用detach的话要用join等待
+			线程结束，故会阻塞，使用detach不会阻塞。
+	*/
 }
 
 MySQLConnectionPool::~MySQLConnectionPool() {
@@ -117,6 +158,13 @@ void MySQLConnectionPool::produceConnectionTask()
 	{
 		std::unique_lock<std::mutex> lock(_queueMutex);
 		cv.wait(lock, [this] { return _connectionQue.empty() || !_isRuning; }); // 队列不空，此处生产线程进入等待状态
+		//std::condition_variable 在Linux/Unix系统上的底层确实是基于 pthread_cond_wait 实现的。
+		/*
+			wait成员函数的函数原型：
+				基础版本：void wait(std::unique_lock<std::mutex>& lock);
+				带谓词版本：void wait(std::unique_lock<std::mutex>& lock, Predicate pred);
+					接受一个锁引用和一个谓词函数，内部会循环检查谓词条件，只有当条件满足时才返回。	
+		*/
 		if (!_isRuning)
 		{
 			break;
@@ -135,6 +183,7 @@ void MySQLConnectionPool::produceConnectionTask()
 		cv.notify_all();
 	}
 }
+//只有当连接容器中的连接消耗殆尽时，才会创建新的连接，不然在条件变量处阻塞，等待连接被消费
 
 
 // 给外部提供接口，从连接池中获取一个可用的空闲连接
@@ -145,7 +194,7 @@ std::shared_ptr<Connection> MySQLConnectionPool::getConnection()
 	{
 		// sleep
 		if (std::cv_status::timeout == cv.wait_for(
-			lock, std::chrono::milliseconds(_connectionTimeout)))
+			lock, std::chrono::milliseconds(_connectionTimeout)))//填入自己设置的时间即可
 		{
 			if (_connectionQue.empty()|| !_isRuning)
 			{
@@ -154,6 +203,16 @@ std::shared_ptr<Connection> MySQLConnectionPool::getConnection()
 				return nullptr;
 			}
 		}
+		/*
+			开始等待 ：线程调用 cv.wait_for()
+			释放锁 ：自动释放 lock 持有的互斥锁
+			等待状态 ：线程进入等待，直到：
+				1.其他线程调用 cv.notify_one() 或 cv.notify_all() 唤醒
+				2.超时时间到达
+				3.线程被中断
+			重新获取锁 ：返回前自动重新获取互斥锁
+			返回状态 ：根据唤醒原因返回相应的 cv_status
+		*/
 
 	}
 	if (!_isRuning && _connectionQue.empty())
@@ -176,6 +235,28 @@ std::shared_ptr<Connection> MySQLConnectionPool::getConnection()
 	cv.notify_all();  // 消费完连接以后，通知生产者线程检查一下，如果队列为空了，赶紧生产连接
 	return sp;
 }
+/*
+	MySQLConnectionPool::getConnection()这个函数在不同的线程中调用，如果连接池为空的话，
+	会阻塞在wait_for()这个地方，等待超时或者notify_all()，当某个线程执行完毕这个函数，成功取出一个连接后，
+	再notify_all()，通知MySQLConnectionPool::produceConnectionTask()线程检查条件变量，创建线程池连接
+
+	1. notify_all() 被调用
+		↓
+	2. 所有等待线程被唤醒
+   		↓
+	3. 每个线程重新获取锁
+   		↓
+	4. 每个线程检查自己的谓词条件
+   		↓
+	5. 条件满足 → 继续执行
+   	   条件不满足 → 重新进入等待
+	notify_all() 是 无差别广播，谓词函数 决定线程是否真正继续执行，同一个条件变量可以协调 多种类型的线程
+	wait()和wait_for()的区别：
+		wait()：线程会一直阻塞，直到被唤醒,底层调用pthread_cond_wait(&cond, &mutex);  // 无超时参数
+		wait_for()：线程会阻塞指定的时间，超时后会自动唤醒,
+		底层调用pthread_cond_timedwait(&cond, &mutex, &timeout);  // 有超时参数
+
+*/
 
 
 // 扫描超过maxIdleTime时间的空闲连接，进行对于的连接回收
@@ -184,7 +265,7 @@ void MySQLConnectionPool::scannerConnectionTask()
 	while (_isRuning)
 	{
 		// 通过sleep模拟定时效果
-		std::this_thread::sleep_for(std::chrono::seconds(_maxIdleTime));
+		std::this_thread::sleep_for(std::chrono::seconds(_maxIdleTime));//定时触发
 		// 扫描整个队列，释放多余的连接
 		std::unique_lock<std::mutex> lock(_queueMutex);
 		while (_connectionCnt > _initSize)
@@ -202,7 +283,7 @@ void MySQLConnectionPool::scannerConnectionTask()
 			}
 		}
 	}
-	while (!_connectionQue.empty()) {
+	while (!_connectionQue.empty()) {//程序退出清理
 		std::unique_lock<std::mutex> lock(_queueMutex);
 		Connection *p = _connectionQue.front();
 		_connectionQue.pop();

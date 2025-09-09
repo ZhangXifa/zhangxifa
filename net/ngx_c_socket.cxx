@@ -1,6 +1,4 @@
-﻿
-
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>    //uintptr_t
@@ -69,6 +67,7 @@ bool CSocekt::Initialize()
 bool CSocekt::Initialize_subproc()
 {
     //发消息互斥量初始化
+    //这里使用动态初始化的原因是每个socket实例都需要自己的发送队列
     if(pthread_mutex_init(&m_sendMessageQueueMutex, NULL)  != 0)
     {        
         ngx_log_stderr(0,"CSocekt::Initialize_subproc()中pthread_mutex_init(&m_sendMessageQueueMutex)失败.");
@@ -102,6 +101,16 @@ bool CSocekt::Initialize_subproc()
         ngx_log_stderr(0,"CSocekt::Initialize_subproc()中sem_init(&m_semEventSendQueue,0,0)失败.");
         return false;
     }
+    /*
+        信号量初始化的函数原型：
+            int sem_init(sem_t *sem, int pshared, unsigned int value);
+            sem：信号量的地址
+            pshared：0表示信号量在同一进程的不同线程之间共享，非0表示信号量在进程之间共享
+            value：信号量的初始值
+            与操作系统中的P、V操作一致
+                P操作：sem_wait() 将计数器减1，如果结果<0则阻塞
+                V操作：sem_post() 将计数器加1，如果有进程/线程等待则唤醒一个
+    */
 
     //创建线程
     int err;
@@ -234,7 +243,6 @@ void CSocekt::ReadConf()
     return;
 }
 
-//监听端口【支持多个端口】，这里遵从nginx的函数命名
 //在创建worker进程之前就要执行这个函数；
 bool CSocekt::ngx_open_listening_sockets()
 {    
@@ -321,8 +329,65 @@ bool CSocekt::ngx_open_listening_sockets()
         return false;
     return true;
 }
+/*
+    socket编程的流程：
+        struct sockaddr_in serv_addr;   //申明服务器地址结构体
+            serv_addr.sin_family = AF_INET;   //选择协议族为IPV4
+            serv_addr.sin_addr.s_addr = htonl(INADDR_ANY); //监听本地所有的IP地址；INADDR_ANY表示的是一个服务器上所有的网卡（服务器可能不止一个网卡）多个本地ip地址都进行绑定端口号，进行侦听。
+            serv_addr.sin_port = htons((in_port_t)iport);   //in_port_t其实就是uint16_t
+        isock = socket(AF_INET,SOCK_STREAM,0);  //创建socket，AF_INET表示IPV4，SOCK_STREAM表示TCP协议，0表示默认协议
+        可将isock设置为地址复用，避免端口被占用
+        int reuseaddr = 1;
+        setsockopt(isock,SOL_SOCKET, SO_REUSEADDR,(const void *) &reuseaddr, sizeof(reuseaddr));
+        地址复用的目的：
+            解决“Address already in use“的错误
+            当服务器程序异常退出或重启时，操作系统会将socket保持在 TIME_WAIT 状态
+            在这个状态下，端口被占用，无法立即重新绑定
+            SO_REUSEADDR 允许新的socket立即绑定到相同的地址和端口
+            SO_REUSEADDR的工作机制：
+                新的socket可以绑定到原来的地址和端口
+                原来的socket的TIME_WAIT状态依然存在
+                两者并存，互不干扰
+                1. 旧连接关闭 → 进入TIME_WAIT状态
+                    连接: (服务器IP:8080, 客户端A_IP:端口A) [TIME_WAIT]
 
-//设置socket连接为非阻塞模式【这种函数的写法很固定】：非阻塞，概念在五章四节讲解的非常清楚【不断调用，不断调用这种：拷贝数据的时候是阻塞的】
+                2. 服务器重启，新socket绑定相同地址
+                    监听: 服务器IP:8080 [LISTEN]  ← SO_REUSEADDR允许这个操作
+
+                3. 系统中同时存在：
+                    - TIME_WAIT连接: (服务器IP:8080, 客户端A_IP:端口A)
+                    - 新监听socket: 服务器IP:8080
+        可将socket设置为端口复用：
+        int reuseport = 1;
+        setsockopt(isock, SOL_SOCKET, SO_REUSEPORT,(const void *) &reuseport, sizeof(int))
+        端口复用的目的：
+            主要解决多个进程监听同一端口的惊群问题
+            在多进程网络服务器中，当多个进程监听同一端口时：
+                所有进程都会在 accept() 或 epoll_wait() 上阻塞等待
+                当有新连接到达时，内核会唤醒 所有等待的进程
+                但只有一个进程能成功处理这个连接
+                其他被唤醒的进程发现没有连接可处理，又重新进入睡眠
+                这种无效的唤醒造成了系统资源浪费和性能下降
+            SO_REUSEPORT 的解决方案：
+                负载均衡机制：
+                    允许多个进程绑定到同一个地址和端口
+                    内核在这些进程间进行负载均衡
+                    新连接到达时，内核只唤醒 一个进程 来处理
+                    避免了多个进程同时被唤醒的惊群现象
+        注：在当前服务器的架构下，网络模块只有一个进程，所以没有必要设置端口复用
+        ioctl(sockfd, FIONBIO, &nb)：设置socket为非阻塞模式
+            所有注册到epoll的socket都应该设置为非阻塞
+            epoll本身LT模式下本身对socket的阻塞与否，不做要求，设置为非阻塞充分利用了epoll的优势
+            但是将非阻塞的socket注册到红黑树会有竞态条件问题：
+                epoll通知有数据可读
+                在调用recv()之前，其他进程/线程可能已经读取了数据
+                导致recv()在阻塞socket上无限等待
+            在边缘触发模式下，非阻塞是强制要求  
+        bind(isock, (struct sockaddr*)&serv_addr, sizeof(serv_addr))：绑定socket到地址
+        listen(isock,NGX_LISTEN_BACKLOG)：监听socket，NGX_LISTEN_BACKLOG：全连接队列长度
+*/
+
+//设置socket连接为非阻塞模式
 bool CSocekt::setnonblocking(int sockfd) 
 {    
     int nb=1; //0：清除，1：设置  
@@ -475,9 +540,11 @@ void CSocekt::printTDInfo()
 //(1)epoll功能初始化，子进程中进行 ，本函数被ngx_network_process_init()所调用
 int CSocekt::ngx_epoll_init()
 {
-    //(1)很多内核版本不处理epoll_create的参数，只要该参数>0即可
     //创建一个epoll对象，创建了一个红黑树，还创建了一个双向链表
     m_epollhandle = epoll_create(m_worker_connections);   //直接以epoll连接的最大项数为参数，肯定是>0的； 
+    //epoll_create()函数返回的是一个文件描述符，这个文件描述符用来操作epoll实例，后续的epoll操作都要基于这个文件描述符
+    //函数参数仅需大于0即可，不限制实际容量
+
     if (m_epollhandle == -1) 
     {
         ngx_log_stderr(errno,"CSocekt::ngx_epoll_init()中epoll_create()失败.");
@@ -486,18 +553,15 @@ int CSocekt::ngx_epoll_init()
 
     //(2)创建连接池【数组】、创建出来，这个东西后续用于处理所有客户端的连接
     initconnection();
-  
-    
-    //(3)遍历所有监听socket【监听端口】，我们为每个监听socket增加一个 连接池中的连接【说白了就是让一个socket和一个内存绑定，以方便记录该sokcet相关的数据、状态等等】
+    //(3)遍历所有监听socket【监听端口】，我们为每个监听socket增加一个 连接池中的连接
     std::vector<lpngx_listening_t>::iterator pos;	
 	for(pos = m_ListenSocketList.begin(); pos != m_ListenSocketList.end(); ++pos)
     {
         lpngx_connection_t p_Conn = ngx_get_connection((*pos)->fd); //从连接池中获取一个空闲连接对象
         if (p_Conn == NULL)
         {
-            //这是致命问题，刚开始怎么可能连接池就为空呢？
             ngx_log_stderr(errno,"CSocekt::ngx_epoll_init()中ngx_get_connection()失败.");
-            exit(2); //这是致命问题了，直接退，资源由系统释放吧，这里不刻意释放了，比较麻烦
+            exit(2); 
         }
         p_Conn->listening = (*pos);   //连接对象 和监听对象关联，方便通过连接对象找监听对象
         (*pos)->connection = p_Conn;  //监听对象 和连接对象关联，方便通过监听对象找连接对象
@@ -521,6 +585,94 @@ int CSocekt::ngx_epoll_init()
     } //end for 
     return 1;
 }
+/*
+    epoll的初始化：向epoll红黑树注册socket，通过epoll_ctl()系统调用实现
+    监听特定事件：EPOLLIN（可读）+ EPOLLRDHUP（连接关闭）
+    关联连接对象：将连接池中的连接对象与socket套接字绑定
+    高效事件通知：利用红黑树实现O(logn)的事件管理
+    异步I/O基础：为后续的epoll_wait事件循环做基础
+
+    epoll的工作机制：
+        epoll是Linux内核提供的高效I/O多路复用机制，它能够监控多个文件描述符上的I/O事件，如可读、可写、异常等。
+        当有事件发生时，epoll会将这些事件通知给应用程序，而不是轮询所有文件描述符。
+        这使得epoll在处理大量并发连接时具有较高的效率。
+
+        epoll的核心组件：
+            红黑树（RB-Tree）
+                作用 ：存储所有被监控的文件描述符
+                特点 ：查找、插入、删除的时间复杂度都是O(log n)
+                内容 ：每个节点包含fd、监控事件类型、回调函数等信息
+            就绪列表（Ready List）
+                作用 ：存储已经就绪的文件描述符
+                实现 ：双向链表结构
+                特点 ：当fd上有事件发生时，内核会将其加入到就绪列表中
+        epoll的工作流程：
+            初始化阶段：
+                调用 epoll_create() 创建epoll实例
+                使用 epoll_ctl(EPOLL_CTL_ADD) 将需要监控的fd添加到红黑树
+                内核为每个fd注册回调函数
+            事件监控阶段：
+                当fd上有I/O事件发生时：
+                    硬件中断触发
+                    内核调用fd对应的回调函数
+                    回调函数将fd添加到就绪列表
+                应用程序调用 epoll_wait() ：
+                    检查就绪列表是否为空
+                    如果为空且设置了超时，则进入睡眠等待
+                    如果有就绪事件，将其复制到用户空间并返回
+        epoll的内核实现细节：
+            回调机制：
+                每个fd在加入epoll时，内核会在对应的设备驱动中注册回调函数
+                当设备状态改变时，驱动调用回调函数
+                回调函数将fd加入就绪列表并唤醒等待的进程
+            内存管理：
+                红黑树节点动态分配，支持大量fd
+                就绪列表使用链表，内存开销小
+                通过引用计数管理fd的生命周期
+        epoll有两种触发模式：
+            水平触发（Level Triggered, LT）
+                特点 ：只要fd上有数据可读/可写， epoll_wait() 就会返回该fd
+                优点 ：编程简单，不容易丢失事件
+                缺点 ：可能产生大量重复通知
+                水平触发就是只要缓冲区有数据可读或者有数据可写，就会触发epoll事件
+            边缘触发（Edge Triggered, ET）
+                特点 ：只有fd状态发生变化时， epoll_wait() 才会返回该fd
+                优点 ：减少系统调用次数，性能更高
+                要求 ：必须使用非阻塞I/O，需要循环读取直到EAGAIN
+                关于fd的状态变化：
+                    只有当fd从"无数据"变为"有数据"时才触发
+                    只有当fd从"不可写"变为"可写"时才触发
+                    如果缓冲区还有未读完的数据，不会再次触发
+                    当有新数据到来时才会触发
+        epoll为什么选择红黑树管理所有注册的fd，选择双向链表管理就绪的fd：
+            RB-Tree：
+                高效的查找、插入、删除操作
+                    时间复杂度：O(log n)
+                    epoll需要频繁进行 epoll_ctl() 操作（添加、修改、删除fd）
+                    红黑树保证了这些操作的高效性
+                自平衡特性
+                    避免了普通二叉搜索树可能退化为链表的问题
+                    保证了最坏情况下的性能稳定性
+                与其他数据结构对比：
+                    哈希表 ：虽然平均O(1)，但存在哈希冲突和动态扩容问题
+                    数组 ：查找O(n)，不适合大量fd的场景
+                    链表 ：查找O(n)，性能太差
+                    AVL树 ：虽然查找稍快，但插入删除时旋转操作更频繁，不如红黑树适合频繁修改的场景
+            deList：
+                就绪事件的特点
+                    就绪事件需要按顺序处理
+                    需要支持快速的头部插入和尾部遍历
+                    双向链表天然支持FIFO特性
+                高效的操作
+                    头部插入：O(1)
+                    遍历取出：O(1)每个元素
+                    删除指定节点：O(1)（已知节点指针）
+                与其他数据结构的对比
+                    数组/动态数组 ：需要预分配空间，扩容成本高
+                    单向链表 ：无法高效地从中间删除节点
+                    队列（基于数组） ：固定大小限制，动态扩容复杂
+                    优先队列 ：不需要优先级排序，反而增加复杂度
+*/
 
 //对epoll事件的具体操作
 //返回值：成功返回1，失败返回-1；
@@ -565,7 +717,7 @@ int CSocekt::ngx_epoll_oper_event(
     }
     else
     {
-        //删除红黑树中节点，目前没这个需求【socket关闭这项会自动从红黑树移除】，所以将来再扩展
+        //删除红黑树中节点，目前没这个需求，socket关闭这项会自动从红黑树移除，所以将来再扩展
         return  1;  //先直接返回1表示成功
     } 
 
@@ -581,6 +733,22 @@ int CSocekt::ngx_epoll_oper_event(
     }
     return 1;
 }
+/*
+    struct epoll_event的结构:
+    struct epoll_event {
+        uint32_t events;    Epoll 事件掩码,如EPOLLIN, EPOLLOUT, EPOLLRDHUP等,指定要监听的事件类型
+        epoll_data_t data;  联合体：用户数据
+    };
+
+    typedef union epoll_data {
+        void *ptr;         指针类型数据
+        int fd;            文件描述符
+        uint32_t u32;      32位无符号整数
+        uint64_t u64;      64位无符号整数
+    } epoll_data_t;
+     事件与数据绑定：通过一个结构体同时传递事件类型和用户数据，实现了事件与处理数据的绑定
+     高效的事件通知 ：当事件发生时，epoll_wait返回的就是这个结构体，包含了所有需要的信息
+    */
 
 //开始获取发生的事件消息
 //参数unsigned int timer：epoll_wait()阻塞的时长，单位是毫秒；
@@ -588,21 +756,14 @@ int CSocekt::ngx_epoll_oper_event(
 //本函数被ngx_process_events_and_timers()调用，而ngx_process_events_and_timers()是在子进程的死循环中被反复调用
 int CSocekt::ngx_epoll_process_events(int timer) 
 {   
-    //等待事件，事件会返回到m_events里，最多返回NGX_MAX_EVENTS个事件【因为我只提供了这些内存】；
-    //如果两次调用epoll_wait()的事件间隔比较长，则可能在epoll的双向链表中，积累了多个事件，所以调用epoll_wait，可能取到多个事件
-    //阻塞timer这么长时间除非：a)阻塞时间到达 b)阻塞期间收到事件【比如新用户连入】会立刻返回c)调用时有事件也会立刻返回d)如果来个信号，比如你用kill -1 pid测试
-    //如果timer为-1则一直阻塞，如果timer为0则立即返回，即便没有任何事件
-    //返回值：有错误发生返回-1，错误在errno中，比如你发个信号过来，就返回-1，错误信息是(4: Interrupted system call)
-    //       如果你等待的是一段时间，并且超时了，则返回0；
-    //       如果返回>0则表示成功捕获到这么多个事件【返回值里】
     int events = epoll_wait(m_epollhandle,m_events,NGX_MAX_EVENTS,timer);    
     
     if(events == -1)
     {
         //有错误发生，发送某个信号给本进程就可以导致这个条件成立，而且错误码根据观察是4；
         //#define EINTR  4，EINTR错误的产生：当阻塞于某个慢系统调用的一个进程捕获某个信号且相应信号处理函数返回时，该系统调用可能返回一个EINTR错误。
-               //例如：在socket服务器端，设置了信号捕获机制，有子进程，当在父进程阻塞于慢系统调用时由父进程捕获到了一个有效信号时，内核会致使accept返回一个EINTR错误(被中断的系统调用)。
-        if(errno == EINTR) 
+        //例如：在socket服务器端，设置了信号捕获机制，有子进程，当在父进程阻塞于慢系统调用时由父进程捕获到了一个有效信号时，内核会致使accept返回一个EINTR错误(被中断的系统调用)。
+        if(errno == EINTR)
         {
             //信号所致，直接返回，一般认为这不是毛病，但还是打印下日志记录一下，因为一般也不会人为给worker进程发送消息
             ngx_log_error_core(NGX_LOG_INFO,errno,"CSocekt::ngx_epoll_process_events()中epoll_wait()失败!"); 
@@ -628,9 +789,6 @@ int CSocekt::ngx_epoll_process_events(int timer)
         return 0; //非正常返回 
     }
 
-    //会惊群，一个telnet上来，4个worker进程都会被惊动，都执行下边这个
-    //ngx_log_stderr(0,"惊群测试:events=%d,进程id=%d",events,ngx_pid); 
-    //ngx_log_stderr(0,"----------------------------------------"); 
 
     //走到这里，就是属于有事件收到了
     lpngx_connection_t p_Conn;
@@ -640,22 +798,16 @@ int CSocekt::ngx_epoll_process_events(int timer)
     {
         p_Conn = (lpngx_connection_t)(m_events[i].data.ptr);           //ngx_epoll_add_event()给进去的，这里能取出来
 
-
-        //能走到这里，我们认为这些事件都没过期，就正常开始处理
         revents = m_events[i].events;//取出事件类型
         
-      
-
         if(revents & EPOLLIN)  //如果是读事件
         {
-           
             (this->* (p_Conn->rhandler) )(p_Conn);    //注意括号的运用来正确设置优先级，防止编译出错；【如果是个新客户连入
         }
-        
-        if(revents & EPOLLOUT) //如果是写事件【对方关闭连接也触发这个，再研究。。。。。。】，注意上边的 if(revents & (EPOLLERR|EPOLLHUP))  revents |= EPOLLIN|EPOLLOUT; 读写标记都给加上了
+        if(revents & EPOLLOUT) //如果是写事件，注意上边的 if(revents & (EPOLLERR|EPOLLHUP))  revents |= EPOLLIN|EPOLLOUT; 读写标记都给加上了
         {
-            //ngx_log_stderr(errno,"22222222222222222222.");
             if(revents & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) //客户端关闭，如果服务器端挂着一个写通知事件，则这里个条件是可能成立的
+            //EPOLLERR : 套接字发生错误 EPOLLHUP : 套接字挂起（对端关闭写端） EPOLLRDHUP : 对端关闭了连接或读端
             {
                 --p_Conn->iThrowsendCount;                 
             }
@@ -668,8 +820,59 @@ int CSocekt::ngx_epoll_process_events(int timer)
     return 1;
 }
 
+/*
+    epoll_wait函数是linux的系统调用，函数原型如下：
+    int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
+    参数：
+        epfd：epoll实例的文件描述符
+        events：用于返回事件的数组
+        maxevents：数组的大小
+        timeout：超时时间，单位是毫秒，-1表示阻塞等待，0表示立即返回，大于0表示等待指定时间
+    返回值：
+        成功：返回发生事件的数量
+        失败：返回-1
+*/
+/*
+    当客户端断开连接时（无论是正常关闭还是异常断开），epoll 机制通常能够检测到，但具体触发的事件 (EPOLLIN 还是 EPOLLRDHUP/EPOLLHUP) 
+    取决于断开的方式和你的 epoll 事件配置。
+
+    TCP 连接是双工的，断开连接是一个过程（通常是四次挥手）。当客户端断开时，它会发送一个 FIN 包给服务器，表明它不再发送数据。
+    服务器内核的 TCP 协议栈接收到这个 FIN 包后，会知道对端已经关闭了连接，随后内核会将这个状态变化通知给正在监听该套接字的 epoll 实例。
+
+    场景一：客户端主动正常关闭连接
+        最常见的情况，客户端发送FIN包
+            默认情况下（LT模式下）：
+            epoll 会触发 EPOLLIN 事件。
+            当对这个事件作出反应，调用 recv() 或 read() 去读取数据时，这些函数会返回 0。
+            返回值 0 是一个明确的信号，表明对端已经关闭了连接（收到了 FIN 包）。
+            此时，服务器应该也调用 close() 来完全关闭本端的套接字，释放资源。
+            使用边缘触发模式 (EPOLLET) 并启用 EPOLLRDHUP：
+            EPOLLRDHUP (since Linux 2.6.17) 是一个更有针对性的事件，它专门用于检测对端连接关闭。
+            需要手动设置它：event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
+            当客户端关闭连接时，epoll 会同时触发 EPOLLIN 和 EPOLLRDHUP 事件。
+            这样你就可以直接在事件处理中判断 EPOLLRDHUP，而不必等到 recv() 返回 0。这对于边缘触发模式尤其有用，可以更及时地清理资源。
+    场景二：客户端进程崩溃或被杀死 (但客户端主机正常)
+        这种情况下，客户端的操作系统会负责清理资源，包括关闭它打开的所有套接字。因此，这个过程和场景一几乎一样：客户端内核会发送 FIN 包给服务器，
+        服务器 epoll 的行为与“客户端主动正常关闭”完全相同。
+    场景三：客户端网络断开或主机宕机 (异常断开)
+        epoll不会立即感知的场景
+        TCP 保活机制 (TCP_KEEPALIVE)：
+            默认情况下，如果网络线被拔掉或者客户端主机突然断电，服务器端在没有数据发送的情况下，会一直不知道对端已经“消失”。
+            为了解决这个问题，TCP 提供了保活机制。你可以通过 setsockopt 设置 SO_KEEPALIVE 选项来启用它。
+            启用后，如果长时间没有数据交换，内核会自动发送保活探测包。如果多次重试后都没有收到响应，内核会认为连接已死亡。
+            此时，epoll 会触发 EPOLLERR 事件（表示连接出错），并且后续对该套接字的 recv() 或 send() 操作会失败（例如 recv() 返回 -1，
+            并且 errno 被设置为 ECONNRESET 或其他错误）。
+        应用层心跳包：
+            由于 TCP 保活机制的默认时间非常长（通常 > 2 小时），对于需要快速感知对端死亡的实时应用，通常会在应用层自己实现“心跳包”。
+            服务器和客户端定期互相发送一个小型数据包。如果服务器在预定时间内没有收到客户端的心跳包，就主动判定客户端断开并 close() 连接。
+        场景四：对端发送 RST 复位报文
+            如果连接出现问题（如客户端在服务器不知情的情况下重启并尝试使用相同的端口重新连接），可能会收到 RST 报文。
+            当内核收到 RST 时，epoll 会报告 EPOLLERR 错误事件。
+            随后对该套接字的操作（如 read, write）都会失败，errno 通常会被设置为 ECONNRESET (Connection reset by peer)。
+*/
+
 //--------------------------------------------------------------------
-//处理发送消息队列的线程
+//将处理结果从共享内存中取出，写入发送队列，这个函数已知轮询，可优化
 void* CSocekt::ServerMoveQueueThread(void* threadData){
     ThreadItem *pThread = static_cast<ThreadItem*>(threadData);
     CSocekt *pSocketObj = pThread->_pThis;
@@ -687,7 +890,7 @@ void* CSocekt::ServerMoveQueueThread(void* threadData){
                     ngx_log_stderr(0, "Invalid connection for fd: %d", ans.fd);
                     continue;
                 }
-                ngx_log_stderr(0, "p_Conn fd: %d", p_Conn->fd);
+                //ngx_log_stderr(0, "p_Conn fd: %d", p_Conn->fd);
                 int iSendLen = sizeof(ResToNetwork);
                 LPCOMM_PKG_HEADER pPkgHeader;	
 	            CMemory  *p_memory = CMemory::GetInstance();
@@ -707,20 +910,21 @@ void* CSocekt::ServerMoveQueueThread(void* threadData){
                 p_sendInfo->fd = htonl(p_sendInfo->fd);
                 pPkgHeader->crc32 = p_crc32->Get_CRC((unsigned char *)p_sendInfo,iSendLen);
                 pPkgHeader->crc32  = htonl(pPkgHeader->crc32);
-                ngx_log_stderr(0, "要写入发送队列的大小为：%d",pSocketObj->m_iLenMsgHeader+pSocketObj->m_iLenPkgHeader+iSendLen);
-                ngx_log_stderr(0, "fd:%d",p_sendInfo->fd);
-                ngx_log_stderr(0, "size of m_iLenMsgHeader:%d",pSocketObj->m_iLenMsgHeader);
-                ngx_log_stderr(0, "size of m_iLenPkgHeader:%d",pSocketObj->m_iLenPkgHeader);
-                ngx_log_stderr(0, "size of ResToNetwork:%d",sizeof(ResToNetwork));
+                //ngx_log_stderr(0, "要写入发送队列的大小为：%d",pSocketObj->m_iLenMsgHeader+pSocketObj->m_iLenPkgHeader+iSendLen);
+                //ngx_log_stderr(0, "fd:%d",p_sendInfo->fd);
+                //ngx_log_stderr(0, "size of m_iLenMsgHeader:%d",pSocketObj->m_iLenMsgHeader);
+                //ngx_log_stderr(0, "size of m_iLenPkgHeader:%d",pSocketObj->m_iLenPkgHeader);
+                //ngx_log_stderr(0, "size of ResToNetwork:%d",sizeof(ResToNetwork));
                 pSocketObj->msgSend(p_sendbuf);
                 ngx_log_stderr(0, "成功写入发送队列");
             }
         }
     }
 }
+//处理发送消息队列的线程
 void* CSocekt::ServerSendQueueThread(void* threadData)
 {   
-    ngx_log_stderr(0, "发送消息线程启动"); 
+    //ngx_log_stderr(0, "发送消息线程启动"); 
     ThreadItem *pThread = static_cast<ThreadItem*>(threadData);
     CSocekt *pSocketObj = pThread->_pThis;
     int err;
@@ -797,7 +1001,7 @@ void* CSocekt::ServerSendQueueThread(void* threadData)
                 p_Conn->psendbuf = (char *)pPkgHeader;   //要发送的数据的缓冲区指针，因为发送数据不一定全部都能发送出去，我们要记录数据发送到了哪里，需要知道下次数据从哪里开始发送
                 itmp = ntohl(pPkgHeader->pkgLen);        //包头+包体 长度 ，打包时用了htons【本机序转网络序】，所以这里为了得到该数值，用了个ntohs【网络序转本机序】；
                 p_Conn->isendlen = itmp;                 //要发送多少数据，因为发送数据不一定全部都能发送出去，我们需要知道剩余有多少数据还没发送
-                ngx_log_stderr(0, "p_Conn->isendlen = %d", itmp);
+                //ngx_log_stderr(0, "p_Conn->isendlen = %d", itmp);
                                 
 
                 sendsize = pSocketObj->sendproc(p_Conn,p_Conn->psendbuf,p_Conn->isendlen); //注意参数
@@ -887,3 +1091,11 @@ void* CSocekt::ServerSendQueueThread(void* threadData)
     
     return (void*)0;
 }
+/*
+    发送结果分三种：
+        完全发送成功 （ sendsize == p_Conn->isendlen ）：释放内存，继续处理下一个消息
+        部分发送成功 （ sendsize > 0 但小于总长度）：更新发送指针和剩余长度，通过 ngx_epoll_oper_event 
+        将连接注册到epoll的 EPOLLOUT 事件中
+        送缓冲区满 （ sendsize == -1 ）：同样注册到epoll事件中，等待系统通知可写时继续发送
+    避免LT模式下频繁通知：只有在发送缓冲区满的时候才注册epoll写事件，避免LT模式下不必要的频繁写通知
+*/

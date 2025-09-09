@@ -1,5 +1,5 @@
-﻿
-
+﻿//此连接池应该像数据库连接池一样，设置两个后台线程，创建和维护连接，设置连接池的最大限额，而不是连接池满了一味的创建新连接。
+//当前的连接池有设计缺陷，在高负载的条件下可能导致服务器资源耗尽。
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,7 +39,7 @@ void ngx_connection_s::GetOneToUse()
     ++iCurrsequence;
 
     fd  = -1;                                         //开始先给-1
-    curStat = _PKG_HD_INIT;                           //收包状态处于 初始状态，准备接收数据包头【状态机】
+    curStat = _PKG_HD_INIT;                           //收包状态处于初始状态，准备接收数据包头【状态机】
     precvbuf = dataHeadInfo;                          //收包我要先收到这里来，因为我要先收包头，所以收数据的buff直接就是dataHeadInfo
     irecvlen = sizeof(COMM_PKG_HEADER);               //这里指定收数据的长度，这里先要求收包头这么长字节的数据
     
@@ -84,7 +84,7 @@ void CSocekt::initconnection()
     {
         p_Conn = (lpngx_connection_t)p_memory->AllocMemory(ilenconnpool,true); //清理内存 , 因为这里分配内存new char，无法执行构造函数，所以如下：
         //手工调用构造函数，因为AllocMemory里无法调用构造函数
-        p_Conn = new(p_Conn) ngx_connection_t();  //定位new【不懂请百度】，释放则显式调用p_Conn->~ngx_connection_t();		
+        p_Conn = new(p_Conn) ngx_connection_t();  //定位new，释放则显式调用p_Conn->~ngx_connection_t();		
         p_Conn->GetOneToUse();
         m_connectionList.push_back(p_Conn);     //所有链接【不管是否空闲】都放在这个list
         m_freeconnectionList.push_back(p_Conn); //空闲连接会放在这个list
@@ -160,8 +160,6 @@ void CSocekt::ngx_free_connection(lpngx_connection_t pConn)
 //有些连接，我们不希望马上释放，要隔一段时间后再释放以确保服务器的稳定，所以，我们把这种隔一段时间才释放的连接先放到一个队列中来
 void CSocekt::inRecyConnectQueue(lpngx_connection_t pConn)
 {
-    //ngx_log_stderr(0,"哎呀我去");
-
     //ngx_log_stderr(0,"CSocekt::inRecyConnectQueue()执行，连接入到回收队列中.");
 
     std::list<lpngx_connection_t>::iterator pos;
@@ -180,7 +178,6 @@ void CSocekt::inRecyConnectQueue(lpngx_connection_t pConn)
 	}
     if(iffind == true) //找到了，不必再入了
 	{
-		//我有义务保证这个只入一次嘛
         return;
     }
 

@@ -8,7 +8,7 @@ MirrorICPProcessingPool::MirrorICPProcessingPool(size_t thread_count,
     : ThreadPool(thread_count, "MirrorICPProcessing"), 
       input_queue_(input_queue),
       output_queue_(output_queue) {
-        start();
+        start();//构造即启动
       }
 
 bool MirrorICPProcessingPool::get_task(Task& task) {
@@ -40,9 +40,9 @@ MirrorICPPointCloud MirrorICPProcessingPool::process_data(PointCloud data) {
     pcl::PointCloud<pcl::PointXYZ> pcl_cloud_ICP = MirrorICPProcessingPool::ICPTransform(pcl_cloud_mirror, pcl_cloud);
     draco::EncoderBuffer bufferMirrorIcp;
     if(ThreadPool::CompressPCDToDraco(5, pcl_cloud_ICP, bufferMirrorIcp)){
-        ngx_log_stderr(0,"镜像ICP点云压缩成功!");
+        //ngx_log_stderr(0,"镜像ICP点云压缩成功!");
     }else{
-        ngx_log_stderr(0,"镜像ICP点云压缩失败!");
+        //ngx_log_stderr(0,"镜像ICP点云压缩失败!");
     }
     MirrorICPPointCloud serializedPointCloud;
     memcpy(serializedPointCloud.serializedData, pPkgBody, data.dataLen);

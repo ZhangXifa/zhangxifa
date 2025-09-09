@@ -79,6 +79,19 @@ T* open_shm_queue(char* shm_name, size_t size = sizeof(T)) {
         ngx_log_stderr(0, "shm_open failed for %s", shm_name);
         return nullptr;
     }
+    /*
+        shm_open函数原型：
+        int shm_open(const char *name, int oflag, mode_t mode);
+        name：共享内存对象的名称，必须以斜杠开头，例如"/my_shm"。
+        oflag：打开标志，常用的有O_CREAT（如果不存在则创建）、O_RDONLY（只读）、O_RDWR（读写）等。
+        mode：权限模式，如0666表示所有用户都有读写权限。
+        成功时返回文件描述符，失败时返回-1
+        底层机制：
+            内核操作：
+                1. 在/dev/shm/目录下创建文件（Linux）
+                2. 分配内核内存对象
+                3. 返回文件描述符用于后续操作
+    */
 
     // 2. 调整共享内存大小
     if (ftruncate(shm_fd, size) == -1) {
@@ -86,10 +99,37 @@ T* open_shm_queue(char* shm_name, size_t size = sizeof(T)) {
         close(shm_fd);
         return nullptr;
     }
+    /*
+        ftruncate函数原型：
+        int ftruncate(int fd, off_t length);
+        fd：文件描述符，shm_open返回的文件描述符。
+        length：新的文件长度，单位为字节。
+        成功时返回0，失败时返回-1。
+        底层机制：
+            1. 检查文件描述符是否有效。
+            2. 调整文件大小到指定长度。
+            3. 如果文件当前大小大于新长度，截断文件内容。
+            4. 如果文件当前大小小于新长度，扩展文件内容（填充为0）。
+    */
 
     // 3. 内存映射
     T* queue = static_cast<T*>(
         mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0));
+    /*
+        mmap函数原型：
+        void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset);
+        addr：映射地址，通常设为nullptr让系统自动选择地址。
+        length：映射的内存长度，单位为字节。
+        prot：内存保护标志，如PROT_READ（只读）、PROT_WRITE（可写）等。
+        flags：映射标志，如MAP_SHARED（共享映射）、MAP_PRIVATE（私有映射）等。
+        fd：文件描述符，shm_open返回的文件描述符。
+        offset：文件偏移量，从文件的哪个位置开始映射。
+        成功时返回映射的内存地址，失败时返回MAP_FAILED。
+        底层机制：
+            1. 检查文件描述符是否有效。
+            2. 检查映射地址是否有效。
+        
+    */
     
     if (queue == MAP_FAILED) {
         ngx_log_stderr(0, "mmap failed for %s", shm_name);

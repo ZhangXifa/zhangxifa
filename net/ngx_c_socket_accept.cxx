@@ -1,5 +1,4 @@
-﻿
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>    //uintptr_t
@@ -22,16 +21,28 @@
 //建立新连接专用函数，当新连接进入时，本函数会被ngx_epoll_process_events()所调用
 void CSocekt::ngx_event_accept(lpngx_connection_t oldc)
 {
-    struct sockaddr    mysockaddr;        //远端服务器的socket地址
+    struct sockaddr    mysockaddr;        //远端的socket地址（ip和端口）
     socklen_t          socklen;
     int                err;
     int                level;
     int                s;
     static int         use_accept4 = 1;   //我们先认为能够使用accept4()函数
     lpngx_connection_t newc;              //代表连接池中的一个连接【注意这是指针】
-    
-    //ngx_log_stderr(0,"这是几个\n"); 这里会惊群，也就是说，epoll技术本身有惊群的问题
-
+    /*
+        epoll技术本身不产生惊群现象，但在多进程的环境下使用epoll时会产生惊群。
+        惊群现象是指当多个进程或线程同时等待同一个事件时，事件发生后所有等待的进程都被唤醒，
+        但只有一个进程能够处理该事件，其他进程被唤醒后发现无事可做又重新进入睡眠状态，造成系统资源浪费。
+    */
+    /*
+        struct sockaddr和struct sockaddr_in：
+            struct sockaddr 是一个通用的套接字地址结构，用于声明一个指针时指向任何类型的地址（IPv4, IPv6, Unix Domain Socket等）。
+            struct sockaddr_in 是一个专用的套接字地址结构，专门用于存储 IPv4 协议的地址和端口信息。
+            // 来自 <sys/socket.h>
+            struct sockaddr {
+                sa_family_t sa_family;     // 地址家族（Address family），如 AF_INET, AF_INET6
+                char sa_data[14];          // 协议地址（包含IP和端口信息）
+            };
+    */
     socklen = sizeof(mysockaddr);
     do   //用do，跳到while后边去方便
     {     
@@ -112,6 +123,7 @@ void CSocekt::ngx_event_accept(lpngx_connection_t oldc)
 
         //ngx_log_stderr(errno,"accept4成功s=%d",s); //s这里就是 一个句柄了
         newc = ngx_get_connection(s); //这是针对新连入用户的连接，和监听套接字 所对应的连接是两个不同的东西，不要搞混
+        //从连接池中取出一个连接和新连入用户的连接关联起来
         if(newc == NULL)
         {
             //连接池中连接不够用，那么就得把这个socekt直接关闭并返回了，因为在ngx_get_connection()中已经写日志了，所以这里不需要写日志了
@@ -121,7 +133,6 @@ void CSocekt::ngx_event_accept(lpngx_connection_t oldc)
             }
             return;
         }
-        //...........将来这里会判断是否连接超过最大允许连接数，现在，这里可以不处理
 
         //成功的拿到了连接池中的一个连接
         memcpy(&newc->s_sockaddr,&mysockaddr,socklen);  //拷贝客户端地址到连接对象【要转成字符串ip地址参考函数ngx_sock_ntop()】
@@ -156,30 +167,6 @@ void CSocekt::ngx_event_accept(lpngx_connection_t oldc)
             ngx_close_connection(newc);//关闭socket,这种可以立即回收这个连接，无需延迟，因为其上还没有数据收发，谈不到业务逻辑因此无需延迟；
             return; //直接返回
         }
-        /*
-        else
-        {
-            //打印下发送缓冲区大小
-            int           n;
-            socklen_t     len;
-            len = sizeof(int);
-            getsockopt(s,SOL_SOCKET,SO_SNDBUF, &n, &len);
-            ngx_log_stderr(0,"发送缓冲区的大小为%d!",n); //87040
-
-            n = 0;
-            getsockopt(s,SOL_SOCKET,SO_RCVBUF, &n, &len);
-            ngx_log_stderr(0,"接收缓冲区的大小为%d!",n); //374400
-
-            int sendbuf = 2048;
-            if (setsockopt(s, SOL_SOCKET, SO_SNDBUF,(const void *) &sendbuf,n) == 0)
-            {
-                ngx_log_stderr(0,"发送缓冲区大小成功设置为%d!",sendbuf); 
-            }
-
-             getsockopt(s,SOL_SOCKET,SO_SNDBUF, &n, &len);
-            ngx_log_stderr(0,"发送缓冲区的大小为%d!",n); //87040
-        }
-        */
 
         if(m_ifkickTimeCount == 1)
         {
@@ -191,4 +178,30 @@ void CSocekt::ngx_event_accept(lpngx_connection_t oldc)
 
     return;
 }
+/*
+    accept4()函数原型：
+        #include <sys/socket.h>
+        int accept4(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags);
+    参数：
+        sockfd：监听套接字
+        addr：客户端地址（ip和端口）
+        addrlen：客户端地址长度
+        flags：0表示阻塞，SOCK_NONBLOCK表示非阻塞
+    返回值：
+        成功：新连接的套接字
+        失败：-1
+    -------------------------------------------------------
+    传统accept()函数：
+        #include <sys/socket.h>
+        int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+    参数：
+        sockfd：监听套接字
+        addr：客户端地址（ip和端口）
+        addrlen：客户端地址长度
+    返回值：
+        成功：新连接的套接字
+        失败：-1
+    将其设置为非阻塞：
+        setnonblocking(s)
+*/
 

@@ -1,6 +1,4 @@
-﻿
-
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>    //uintptr_t
@@ -65,7 +63,7 @@ CLogicSocket::~CLogicSocket()
 
 }
 
-//初始化函数【fork()子进程之前干这个事】
+//初始化函数【fork()子进程之前干这个事
 //成功返回true，失败返回false
 bool CLogicSocket::Initialize()
 {
@@ -128,9 +126,8 @@ void CLogicSocket::threadRecvProcFunc(char *pMsgBuf)
     ngx_log_stderr(0,"CLogicSocket::threadRecvProcFunc()中imsgCode=%d!",imsgCode);
     (this->*statusHandler[imsgCode])(p_Conn,pMsgHeader,(char *)pPkgBody,pkglen-m_iLenPkgHeader);
     return;	
-}
+}//此函数相当于在C语言下实现多态
 
-//心跳包检测时间到，该去检测心跳包是否超时的事宜，本函数是子类函数，实现具体的判断动作
 void CLogicSocket::procPingTimeOutChecking(LPSTRUC_MSG_HEADER tmpmsg,time_t cur_time)
 {
     CMemory *p_memory = CMemory::GetInstance();
@@ -145,8 +142,7 @@ void CLogicSocket::procPingTimeOutChecking(LPSTRUC_MSG_HEADER tmpmsg,time_t cur_
         }            
         else if( (cur_time - p_Conn->lastPingTime ) > (m_iWaitTime*3+10) ) //超时踢的判断标准就是 每次检查的时间间隔*3，超过这个时间没发送心跳包，就踢【大家可以根据实际情况自由设定】
         {
-            //踢出去【如果此时此刻该用户正好断线，则这个socket可能立即被后续上来的连接复用  如果真有人这么倒霉，赶上这个点了，那么可能错踢，错踢就错踢】            
-            //ngx_log_stderr(0,"时间到不发心跳包，踢出去!");   //感觉OK
+            //踢出去，如果此时此刻该用户正好断线，则这个socket可能立即被后续上来的连接复用  如果真有人这么倒霉，赶上这个点了，那么可能错踢，错踢就错踢
             zdClosesocketProc(p_Conn); 
         }   
              
@@ -176,6 +172,20 @@ void CLogicSocket::SendNoBodyPkgToClient(LPSTRUC_MSG_HEADER pMsgHeader,unsigned 
 	pPkgHeader->crc32 = 0;		
     msgSend(p_sendbuf);
     return;
+}
+bool CLogicSocket::_HandlePing(lpngx_connection_t pConn,LPSTRUC_MSG_HEADER pMsgHeader,char *pPkgBody,uint32_t iBodyLength)
+{
+    if(iBodyLength != 0)  //有包体则认为是 非法包
+		return false; 
+
+    CLock lock(&pConn->logicPorcMutex); //凡是和本用户有关的访问都考虑用互斥，以免该用户同时发送过来两个命令达到各种作弊目的
+    pConn->lastPingTime = time(NULL);   //更新该变量
+
+    //服务器也发送 一个只有包头的数据包给客户端，作为返回的数据
+    SendNoBodyPkgToClient(pMsgHeader,_CMD_PING);
+
+    //ngx_log_stderr(0,"成功收到了心跳包并返回结果！");
+    return true;
 }
 bool CLogicSocket::_PCDreceive(lpngx_connection_t pConn, LPSTRUC_MSG_HEADER pMsgHeader, char *pPkgBody, uint32_t iBodyLength) {
     if (pPkgBody == NULL || iBodyLength < sizeof(PointCloud)) {
@@ -208,9 +218,9 @@ bool CLogicSocket::_PCDreceive(lpngx_connection_t pConn, LPSTRUC_MSG_HEADER pMsg
         return false;
     }
 
-    // 记录连接信息（需确保线程安全）
+    // 记录连接信息，fd具有唯一性，故这里不需要加锁应该是线程安全的
     fdToConn[pc.fd] = pConn;
-    ngx_log_error_core(NGX_LOG_INFO, 0, "成功写入队列");
+    //ngx_log_error_core(NGX_LOG_INFO, 0, "成功写入队列");
 
     return true;
 }
@@ -288,20 +298,5 @@ bool CLogicSocket::_PCDsend(lpngx_connection_t pConn,LPSTRUC_MSG_HEADER pMsgHead
 
     //f)发送数据包
     msgSend(p_sendbuf);
-    return true;
-}
-
-bool CLogicSocket::_HandlePing(lpngx_connection_t pConn,LPSTRUC_MSG_HEADER pMsgHeader,char *pPkgBody,uint32_t iBodyLength)
-{
-    if(iBodyLength != 0)  //有包体则认为是 非法包
-		return false; 
-
-    CLock lock(&pConn->logicPorcMutex); //凡是和本用户有关的访问都考虑用互斥，以免该用户同时发送过来两个命令达到各种作弊目的
-    pConn->lastPingTime = time(NULL);   //更新该变量
-
-    //服务器也发送 一个只有包头的数据包给客户端，作为返回的数据
-    SendNoBodyPkgToClient(pMsgHeader,_CMD_PING);
-
-    //ngx_log_stderr(0,"成功收到了心跳包并返回结果！");
     return true;
 }

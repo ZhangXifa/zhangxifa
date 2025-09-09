@@ -17,6 +17,7 @@
 class ThreadPool {
 public:
     using Task = std::function<void()>;
+    //C++11引入的通用函数包装器，可以存储、复制和调用任何可调用的对象
     
     ThreadPool(size_t thread_count, const std::string& name) : stop_(false), name_(name), thread_count_(thread_count) {}
     
@@ -26,11 +27,17 @@ public:
     
     void start() {
         for (size_t i = 0; i < thread_count_; ++i) {
-            workers_.emplace_back([this] {
+            workers_.emplace_back([this] {//直接构造子类的时候，this指针直接指向子类对象
+            //构造子类对象时，虽然一个对象由两部分组成（基类和子类），但内存中是一个完整的对象
+            //一个地址：整个对象只有一个地址，就是this指针
                 while (true) {
                     Task task;
                     
                     if (stop_.load(std::memory_order_acquire)) break;
+                    //用于线程池优雅的停止，原子读取stop_的当前值，保证读取操作的原子性
+                    //std::memory_order_acquire:内存序约束，
+                    //获取语义:确保在此操作之后的所有内存操作都不会被重排序到此操作之前
+                    //同步保证:与使用 memory_order_release 的写操作形成同步关系
                     
                     if (get_task(task)) {
                         task();
@@ -44,7 +51,7 @@ public:
     }
     
     void stop() {
-        stop_.store(true, std::memory_order_release);
+        stop_.store(true, std::memory_order_release);//在release后，才能acquire
         for (auto& worker : workers_) {
             if (worker.joinable()) worker.join();
         }
@@ -127,7 +134,11 @@ private:
     // 输入队列
     LockFreeQueue<ResPointCloud, QUEUE_SIZE>& input_queue_;
 };
-
-
-
 #endif // NGX_LOCKFREE_MIRRORICP_THREADPOOL_H
+/*
+    线程池选择轮询的原因：
+    与阻塞模式相比：CPU占比高，但是没有唤醒延迟，响应速度快
+    事件驱动模式更适合I/O密集型任务，如网络请求、文件操作等
+    轮询模式更适合CPU密集型任务，如计算、加密等
+    轮询带来的最大问题是CPU占用率高，在任务稀少的情况下，可能导致cpu空转，浪费资源
+*/

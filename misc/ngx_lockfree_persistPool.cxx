@@ -137,10 +137,21 @@ bool PersistProcessingPool::process_data(ResPointCloud data) {
         ngx_log_stderr(0, "处理数据异常: %s", e.what());
         conn->update("ROLLBACK");
         
-        // 清理文件
+        // 清理文件（数据库事务提交失败时）
         unlink(temp_filename.c_str());
         unlink(final_filename.c_str());
         
         return false;
     }
 }
+/*
+    持久化的执行流程：
+    1. 生成临时文件名和最终文件名
+    2. 将数据写入临时文件
+    3. 开始数据库事务
+    4. 查询旧文件路径
+    5. 重命名临时文件为最终文件，并移动到最终目录
+    6. 更新数据库记录
+    7. 提交事务
+    8. 成功后才删除旧文件
+*/

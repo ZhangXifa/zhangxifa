@@ -119,10 +119,12 @@ ssize_t CSocekt::recvproc(lpngx_connection_t pConn,char *buff,ssize_t buflen)  /
     ssize_t n;
     
     n = recv(pConn->fd, buff, buflen, 0); //recv()系统函数， 最后一个参数flag，一般为0；     
-    if(n == 0)
+    if(n == 0)//应该是对端关闭的情况
     {
       
-        zdClosesocketProc(pConn);        
+        zdClosesocketProc(pConn);
+        //这个函数中调用close函数关闭的socket套接字，Linux内核会自动将该文件描述符从epoll实例中移除，无需手动调用。
+        //close()系统调用会触发内核清理该文件描述符的所有引用。     
         return -1;
     }
     //客户端没断，走这里 
@@ -151,6 +153,7 @@ ssize_t CSocekt::recvproc(lpngx_connection_t pConn,char *buff,ssize_t buflen)  /
     //能走到这里的，就认为收到了有效数据
     return n; //返回收到的字节数
 }
+//这个地方的bufflen是剩余还要接受多长的数据，并不是已经接收到的数据长度
 
 
 //包头收完整后的处理，我们称为包处理阶段1【p1】：写成函数，方便复用
@@ -200,7 +203,7 @@ void CSocekt::ngx_wait_request_handler_proc_p1(lpngx_connection_t pConn,bool &is
         else
         {
             pConn->curStat = _PKG_BD_INIT;                   //当前状态发生改变，包头刚好收完，准备接收包体	    
-            pConn->precvbuf = pTmpBuffer + m_iLenPkgHeader;  //pTmpBuffer指向包头，这里 + m_iLenPkgHeader后指向包体 weizhi
+            pConn->precvbuf = pTmpBuffer + m_iLenPkgHeader;  //pTmpBuffer指向包头，这里 + m_iLenPkgHeader后指向包体位置
             pConn->irecvlen = e_pkgLen - m_iLenPkgHeader;    //e_pkgLen是整个包【包头+包体】大小，-m_iLenPkgHeader【包头】  = 包体
         }                       
     }  //end if(e_pkgLen < m_iLenPkgHeader) 

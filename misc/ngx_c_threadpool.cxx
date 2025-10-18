@@ -269,7 +269,7 @@ void CThreadPool::StopAll()
 void CThreadPool::inMsgRecvQueueAndSignal(char *buf)
 {
     //互斥
-    int err = pthread_mutex_lock(&m_pthreadMutex);     
+    int err = pthread_mutex_lock(&m_pthreadMutex);  
     if(err != 0)
     {
         ngx_log_stderr(err,"CThreadPool::inMsgRecvQueueAndSignal()pthread_mutex_lock()失败，返回的错误码为%d!",err);

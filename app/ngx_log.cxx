@@ -34,14 +34,12 @@ ngx_log_t   ngx_log;
 void ngx_log_stderr(int err, const char *fmt, ...)
 {    
     va_list args;                        //创建一个va_list类型变量
-    u_char  errstr[NGX_MAX_ERROR_STR+1]; //2048  -- ************  +1是我自己填的，感谢官方写法有点小瑕疵，所以动手调整一下
+    u_char  errstr[NGX_MAX_ERROR_STR+1]; //2048
     u_char  *p,*last;
 
-    memset(errstr,0,sizeof(errstr));     //我个人加的，这块有必要加，至少在va_end处理之前有必要，否则字符串没有结束标记不行的；***************************
+    memset(errstr,0,sizeof(errstr));    
 
-    last = errstr + NGX_MAX_ERROR_STR;        //last指向整个buffer最后去了【指向最后一个有效位置的后面也就是非有效位】，作为一个标记，防止输出内容超过这么长,
-                                                    //其实我认为这有问题，所以我才在上边errstr[NGX_MAX_ERROR_STR+1]; 给加了1
-                                              //比如你定义 char tmp[2]; 你如果last = tmp+2，那么last实际指向了tmp[2]，而tmp[2]在使用中是无效的
+    last = errstr + NGX_MAX_ERROR_STR;
                                                 
     p = ngx_cpymem(errstr, "nginx: ", 7);     //p指向"nginx: "之后    
     
@@ -58,12 +56,10 @@ void ngx_log_stderr(int err, const char *fmt, ...)
     //若位置不够，那换行也要硬插入到末尾，哪怕覆盖到其他内容    
     if (p >= (last - 1))
     {
-        p = (last - 1) - 1; //把尾部空格留出来，这里感觉nginx处理的似乎就不对 
-                             //我觉得，last-1，才是最后 一个而有效的内存，而这个位置要保存\0，所以我认为再减1，这个位置，才适合保存\n
+        p = (last - 1) - 1;
     }
     *p++ = '\n'; //增加个换行符    
-    
-    //往标准错误【一般是屏幕】输出信息    
+       
     write(STDERR_FILENO,errstr,p - errstr); //三章七节讲过，这个叫标准错误，一般指屏幕
 
     if(ngx_log.fd > STDERR_FILENO) //如果这是个有效的日志文件，本条件肯定成立，此时也才有意义将这个信息写到日志文件

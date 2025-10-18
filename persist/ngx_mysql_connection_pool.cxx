@@ -96,6 +96,8 @@ MySQLConnectionPool::MySQLConnectionPool()
 	// 启动一个新的线程，作为连接的生产者 linux thread => pthread_create
 	std::thread produce(std::bind(&MySQLConnectionPool::produceConnectionTask, this));
 	//C++11的thread函数底层还是调用pthread_create，只是封装了一下，方便使用
+	//此函数的返回值是一个线程对象，要得到线程的id需要调用get_id()函数
+	//std::thread::id tid = t.get_id();
 	produce.detach();
 	/*
 		函数原型：
@@ -111,6 +113,22 @@ MySQLConnectionPool::MySQLConnectionPool()
 			3.使用std::ref()
 				std::thread produce(std::mem_fn(&MySQLConnectionPool::produceConnectionTask), this);
 		
+	*/
+
+	/*
+		有参数线程的处理方式：
+		直接传参：
+			//对于普通函数
+			void threadFunc(int param1, std::string param2) { ... }
+			std::thread t(threadFunc, 42, "hello");
+			//对于成员函数
+			std::thread t(&ClassName::memberFunc, &obj, param1, param2);
+		使用std::bind()
+			std::thread t(std::bind(&ClassName::memberFunc, this, param1, param2));
+		使用lambda表达式
+			std::thread t([this, param1, param2]() {
+    			this->memberFunc(param1, param2);
+			});
 	*/
 	// 启动一个新的定时线程，扫描超过maxIdleTime时间的空闲连接，进行对于的连接回收
 	std::thread scanner(std::bind(&MySQLConnectionPool::scannerConnectionTask, this));
@@ -291,3 +309,40 @@ void MySQLConnectionPool::scannerConnectionTask()
 	}
 	cv.notify_all();
 }
+/*
+	std::mutex的用法：
+		#include <mutex>
+		std::mutex my_mutex; // 创建一个互斥量
+		用lock()和unlock()手动加锁和解锁
+
+		{
+			// 加锁
+			my_mutex.lock();
+			// 临界区代码
+			// ...
+			// 解锁
+			my_mutex.unlock();
+		}
+
+		不推荐直接使用 lock() 和 unlock()！因为如果在临界区代码中发生异常、或提前返回，可能导致 unlock() 没有被调用，
+		从而造成死锁（Deadlock）——锁永远无法被释放，其他线程永远等待。
+
+		推荐用法使用 std::lock_guard（RAII机制）
+		{
+			std::lock_guard<std::mutex> guard(my_mutex);
+			// 临界区代码
+			// ...
+		}
+		// 出作用域时，lock_guard 自动析构，释放锁
+
+		更灵活的用法：std::unique_lock
+		{
+			std::unique_lock<std::mutex> ulock(my_mutex);
+			// 临界区代码
+			// ...
+		}
+		// 出作用域时，unique_lock 自动析构，释放锁
+
+		
+
+*/

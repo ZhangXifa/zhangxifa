@@ -205,6 +205,19 @@ bool CLogicSocket::_PCDreceive(lpngx_connection_t pConn, LPSTRUC_MSG_HEADER pMsg
         ngx_log_stderr(0, "点云数据超过1MB限制");
         return false;
     }
+    /*
+        大端序（网络序）和小端序（主机序）：
+            大端序：低地址存放高位字节，高地址存放低位字节，“人本位”，更符合人类的阅读习惯
+            小端序：低地址存放低位字节，高地址存放高位字节，“机器本位”，反人类，但对CPU友好
+
+            网络序转字节序：htonl()/htons()
+            字节序转网络序：ntohl()/ntohs()
+
+            假设一个32位整数 0x12345678 存储在从地址 0x100 开始的内存中：
+
+            大端序存储方式：12 34 56 78
+            小端序存储方式：78 56 34 12
+    */
 
     // 拷贝数据
     memcpy(pc.serializedData, recvpc->serializedData, pc.dataLen);

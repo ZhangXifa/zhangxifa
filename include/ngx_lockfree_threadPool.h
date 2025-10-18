@@ -35,7 +35,7 @@ public:
                     
                     if (stop_.load(std::memory_order_acquire)) break;
                     //用于线程池优雅的停止，原子读取stop_的当前值，保证读取操作的原子性
-                    //std::memory_order_acquire:内存序约束，
+                    //std::memory_order_acquire:内存序约束
                     //获取语义:确保在此操作之后的所有内存操作都不会被重排序到此操作之前
                     //同步保证:与使用 memory_order_release 的写操作形成同步关系
                     

@@ -125,7 +125,6 @@ lblexit:
     //(5)该释放的资源要释放掉
     ngx_log_stderr(0,"程序退出，再见了!");
     freeresource();  //一系列的main返回前的释放动作函数
-    //printf("程序退出，再见!\n");    
     return exitcode;
 }
 

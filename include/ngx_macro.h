@@ -1,5 +1,4 @@
-﻿
-#ifndef __NGX_MACRO_H__
+﻿#ifndef __NGX_MACRO_H__
 #define __NGX_MACRO_H__
 
 //各种#define宏定义相关的定义放这里

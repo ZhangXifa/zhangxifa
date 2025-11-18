@@ -26,7 +26,6 @@ static void ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext); /
 static void ngx_process_get_status(void);                                      //获取子进程的结束状态，防止单独kill子进程时子进程变成僵尸进程
 
 //数组 ，定义本系统处理的各种信号，我们取一小部分nginx中的信号，并没有全部搬移到这里，日后若有需要根据具体情况再增加
-//在实际商业代码中，你能想到的要处理的信号，都弄进来
 ngx_signal_t  signals[] = {
     // signo      signame             handler
     { SIGHUP,    "SIGHUP",           ngx_signal_handler },        //终端断开信号，对于守护进程常用于reload重载配置文件通知--标识1

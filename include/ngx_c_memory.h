@@ -1,5 +1,4 @@
-﻿
-#ifndef __NGX_MEMORY_H__
+﻿#ifndef __NGX_MEMORY_H__
 #define __NGX_MEMORY_H__
 
 #include <stddef.h>  //NULL

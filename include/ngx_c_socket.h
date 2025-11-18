@@ -1,5 +1,4 @@
-﻿
-#ifndef __NGX_SOCKET_H__
+﻿#ifndef __NGX_SOCKET_H__
 #define __NGX_SOCKET_H__
 
 #include <vector>       //vector

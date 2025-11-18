@@ -12,9 +12,6 @@
 //只用于本文件的一些函数声明就放在本文件中
 static u_char *ngx_sprintf_num(u_char *buf, u_char *last, uint64_t ui64,u_char zero, uintptr_t hexadecimal, uintptr_t width);
 
-//----------------------------------------------------------------------------------------------------------------------
-//对于 nginx 自定义的数据结构进行标准格式化输出,就像 printf,vprintf 一样，我们顺道学习写这类函数到底内部是怎么实现的
-//该函数只不过相当于针对ngx_vslprintf()函数包装了一下，所以，直接研究ngx_vslprintf()即可
 u_char *ngx_slprintf(u_char *buf, u_char *last, const char *fmt, ...) 
 {
     va_list   args;
@@ -26,8 +23,6 @@ u_char *ngx_slprintf(u_char *buf, u_char *last, const char *fmt, ...)
     return p;
 }
 
-//----------------------------------------------------------------------------------------------------------------------
-//和上边的ngx_snprintf非常类似
 u_char * ngx_snprintf(u_char *buf, size_t max, const char *fmt, ...)   //类printf()格式化函数，比较安全，max指明了缓冲区结束位置
 {
     u_char   *p;
@@ -38,10 +33,6 @@ u_char * ngx_snprintf(u_char *buf, size_t max, const char *fmt, ...)   //类prin
     va_end(args);
     return p;
 }
-
-//----------------------------------------------------------------------------------------------------------------------
-//对于 nginx 自定义的数据结构进行标准格式化输出,就像 printf,vprintf 一样，我们顺道学习写这类函数到底内部是怎么实现的
-//例如，给进来一个 "abc = %d",13   ,最终buf里得到的应该是   abc=13 这种结果
 //buf：往这里放数据
 //last：放的数据不要超过这里
 //fmt：以这个为首的一系列可变参数
@@ -74,10 +65,9 @@ u_char *ngx_vslprintf(u_char *buf, u_char *last,const char *fmt,va_list args)
 
     while (*fmt && buf < last) //每次处理一个字符，处理的是  "invalid option: \"%s\",%d" 中的字符
     {
-        if (*fmt == '%')  //%开头的一般都是需要被可变参数 取代的 
+        if (*fmt == '%')  //%开头的一般都是需要被可变参数取代的 
         {
             //-----------------变量初始化工作开始-----------------
-            //++fmt是先加后用，也就是fmt先往后走一个字节位置，然后再判断该位置的内容
             zero  = (u_char) ((*++fmt == '0') ? '0' : ' ');  //判断%后边接的是否是个'0',如果是zero = '0'，否则zero = ' '，一般比如你想显示10位，而实际数字7位，前头填充三个字符，就是这里的zero用于填充
                                                                 //ngx_log_stderr(0, "数字是%010d", 12); 
                                                                 
@@ -148,7 +138,7 @@ u_char *ngx_vslprintf(u_char *buf, u_char *last,const char *fmt,va_list args)
                 {
                     ui64 = (uint64_t) va_arg(args, u_int);    
                 }
-                break;  //这break掉，直接跳道switch后边的代码去执行,这种凡是break的，都不做fmt++;  *********************【switch后仍旧需要进一步处理】
+                break;  //这break掉，直接跳道switch后边的代码去执行,这种凡是break的，都不做fmt++; 
 
              case 'i': //转换ngx_int_t型数据，如果用%ui，则转换的数据类型是ngx_uint_t  
                 if (sign) 
@@ -249,10 +239,6 @@ u_char *ngx_vslprintf(u_char *buf, u_char *last,const char *fmt,va_list args)
                 }
                 fmt++;
                 continue;  //重新从while开始执行
-
-            //..................................
-            //................其他格式符，逐步完善
-            //..................................
 
             default:
                 *buf++ = *fmt++; //往下移动一个字符

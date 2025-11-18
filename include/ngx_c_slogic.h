@@ -1,5 +1,4 @@
-﻿
-#ifndef __NGX_C_SLOGIC_H__
+﻿#ifndef __NGX_C_SLOGIC_H__
 #define __NGX_C_SLOGIC_H__
 
 #include <sys/socket.h>

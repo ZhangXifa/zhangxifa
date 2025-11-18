@@ -1,0 +1,36 @@
+version: '3.7'
+
+services:
+  mysql:
+    image: mysql:5.7
+    container_name: point_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: your_password
+      MYSQL_DATABASE: zhangxifa
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  pointserver:
+    build: .
+    image: pointserver:ubuntu16
+    container_name: point_server
+    depends_on:
+      - mysql
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: your_password
+      MYSQL_DBNAME: zhangxifa
+      MYSQL_INIT_SIZE: 10
+      MYSQL_MAX_SIZE: 1024
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./point_clouds:/app/point_clouds
+    # 如需自定义配置，可挂载文件：
+    # volumes:
+    #   - ./nginx.conf:/app/nginx.conf:ro
+    #   - ./persist/mysql.ini:/app/mysql.ini:ro

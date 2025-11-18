@@ -1,5 +1,4 @@
-﻿
-#ifndef __NGX_LOGICCOMM_H__
+﻿#ifndef __NGX_LOGICCOMM_H__
 #define __NGX_LOGICCOMM_H__
 
 //收发命令宏定义

@@ -1,5 +1,4 @@
-﻿
-#ifndef __NGX_THREADPOOL_H__
+﻿#ifndef __NGX_THREADPOOL_H__
 #define __NGX_THREADPOOL_H__
 
 #include <vector>

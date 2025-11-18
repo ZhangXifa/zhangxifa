@@ -1,5 +1,4 @@
-﻿
-#ifndef __NGX_LOCKMUTEX_H__
+﻿#ifndef __NGX_LOCKMUTEX_H__
 #define __NGX_LOCKMUTEX_H__
 
 #include <pthread.h> 

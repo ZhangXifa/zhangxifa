@@ -1,0 +1,21 @@
+# Build outputs
+build/
+**/bin/
+**/*.o
+**/*.obj
+**/*.pch
+
+# VCS
+.git/
+.gitignore
+
+# IDE / OS noise
+.vscode/
+.idea/
+*.swp
+*.tmp
+*.log
+error.log
+
+# Misc large files not needed in build
+*.svg

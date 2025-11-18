@@ -1,5 +1,4 @@
-﻿
-#ifndef __NGX_GBLDEF_H__
+﻿#ifndef __NGX_GBLDEF_H__
 #define __NGX_GBLDEF_H__
 
 #include <signal.h> 

@@ -1,5 +1,4 @@
-﻿
-#ifndef __NGX_COMM_H__
+﻿#ifndef __NGX_COMM_H__
 #define __NGX_COMM_H__
 
 

@@ -71,16 +71,13 @@ void ngx_log_stderr(int err, const char *fmt, ...)
     return;
 }
 
-//----------------------------------------------------------------------------------------------------------------------
-//描述：给一段内存，一个错误编号，我要组合出一个字符串，形如：   (错误编号: 错误原因)，放到给的这段内存中去
-//     这个函数我改造的比较多，和原始的nginx代码多有不同
+//------------------------------------------------------------
 //buf：是个内存，要往这里保存数据
 //last：放的数据不要超过这里
 //err：错误编号，我们是要取得这个错误编号对应的错误字符串，保存到buffer中
 u_char *ngx_log_errno(u_char *buf, u_char *last, int err)
 {
-    //以下代码是我自己改造，感觉作者的代码有些瑕疵
-    char *perrorinfo = strerror(err); //根据资料不会返回NULL;
+    char *perrorinfo = strerror(err);
     size_t len = strlen(perrorinfo);
 
     //然后我还要插入一些字符串： (%d:)  
@@ -94,7 +91,6 @@ u_char *ngx_log_errno(u_char *buf, u_char *last, int err)
     size_t extralen = leftlen + rightlen; //左右的额外宽度
     if ((buf + len + extralen) < last)
     {
-        //保证整个我装得下，我就装，否则我全部抛弃 ,nginx的做法是 如果位置不够，就硬留出50个位置【哪怕覆盖掉以往的有效内容】，也要硬往后边塞，这样当然也可以；
         buf = ngx_cpymem(buf, leftstr, leftlen);
         buf = ngx_cpymem(buf, perrorinfo, len);
         buf = ngx_cpymem(buf, rightstr, rightlen);
@@ -104,14 +100,10 @@ u_char *ngx_log_errno(u_char *buf, u_char *last, int err)
 
 //----------------------------------------------------------------------------------------------------------------------
 //往日志文件中写日志，代码中有自动加换行符，所以调用时字符串不用刻意加\n；
-//    日过定向为标准错误，则直接往屏幕上写日志【比如日志文件打不开，则会直接定位到标准错误，此时日志就打印到屏幕上，参考ngx_log_init()】
-//level:一个等级数字，我们把日志分成一些等级，以方便管理、显示、过滤等等，如果这个等级数字比配置文件中的等级数字"LogLevel"大，那么该条信息不被写到日志文件中
-//err：是个错误代码，如果不是0，就应该转换成显示对应的错误信息,一起写到日志文件中，
-//ngx_log_error_core(5,8,"这个XXX工作的有问题,显示的结果是=%s","YYYY");
 void ngx_log_error_core(int level,  int err, const char *fmt, ...)
 {
     u_char  *last;
-    u_char  errstr[NGX_MAX_ERROR_STR+1];   //这个+1也是我放入进来的，本函数可以参考ngx_log_stderr()函数的写法；
+    u_char  errstr[NGX_MAX_ERROR_STR+1];
 
     memset(errstr,0,sizeof(errstr));  
     last = errstr + NGX_MAX_ERROR_STR;   
@@ -152,25 +144,19 @@ void ngx_log_error_core(int level,  int err, const char *fmt, ...)
         //错误代码和错误信息也要显示出来
         p = ngx_log_errno(p, last, err);
     }
-    //若位置不够，那换行也要硬插入到末尾，哪怕覆盖到其他内容
     if (p >= (last - 1))
     {
-        p = (last - 1) - 1; //把尾部空格留出来，这里感觉nginx处理的似乎就不对 
-                             //我觉得，last-1，才是最后 一个而有效的内存，而这个位置要保存\0，所以我认为再减1，这个位置，才适合保存\n
+        p = (last - 1) - 1;
     }
-    *p++ = '\n'; //增加个换行符       
+    *p++ = '\n';       
 
-    //这么写代码是图方便：随时可以把流程弄到while后边去；大家可以借鉴一下这种写法
     ssize_t   n;
     while(1) 
     {        
         if (level > ngx_log.log_level) 
         {
-            //要打印的这个日志的等级太落后（等级数字太大，比配置文件中的数字大)
-            //这种日志就不打印了
             break;
         }
-        //磁盘是否满了的判断，先算了吧，还是由管理员保证这个事情吧； 
 
         //写日志文件        
         n = write(ngx_log.fd,errstr,p - errstr);  //文件写入成功后，如果中途
@@ -181,7 +167,7 @@ void ngx_log_error_core(int level,  int err, const char *fmt, ...)
             {
                 //磁盘没空间了
                 //没空间还写个毛线啊
-                //先do nothing吧；
+                //先do nothing
             }
             else
             {
@@ -213,10 +199,9 @@ void ngx_log_init()
         plogname = (u_char *) NGX_ERROR_LOG_PATH; //"logs/error.log" ,logs目录需要提前建立出来
     }
     ngx_log.log_level = p_config->GetIntDefault("LogLevel",NGX_LOG_NOTICE);//缺省日志等级为6【注意】 ，如果读失败，就给缺省日志等级
-    //nlen = strlen((const char *)plogname);
 
     //只写打开|追加到末尾|文件不存在则创建【这个需要跟第三参数指定文件访问权限】
-    //mode = 0644：文件访问权限， 6: 110    , 4: 100：     【用户：读写， 用户所在组：读，其他：读】 老师在第三章第一节介绍过
+    //mode = 0644：文件访问权限， 6: 110    , 4: 100：     【用户：读写， 用户所在组：读，其他：读】
     //ngx_log.fd = open((const char *)plogname,O_WRONLY|O_APPEND|O_CREAT|O_DIRECT,0644);   //绕过内和缓冲区，write()成功则写磁盘必然成功，但效率可能会比较低；
     ngx_log.fd = open((const char *)plogname,O_WRONLY|O_APPEND|O_CREAT,0644);  
     if (ngx_log.fd == -1)  //如果有错误，则直接定位到 标准错误上去 

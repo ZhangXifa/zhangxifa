@@ -1,6 +1,4 @@
-﻿
-//和 crc32校验算法 有关的代码
-
+﻿//和 crc32校验算法 有关的代码
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

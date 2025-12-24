@@ -82,7 +82,7 @@ bool PersistProcessingPool::process_data(ResPointCloud data) {
     try {
         // 4. 查询旧文件路径
         char query_sql[256] = {0};
-        sprintf(query_sql, "SELECT pc_data_path FROM user WHERE TRIM(IDC)='%s'", data.ID);
+        sprintf(query_sql, "SELECT pc_data_path FROM newUser WHERE TRIM(IDC)='%s'", data.ID);
         
         MYSQL_RES* res = conn->query(query_sql);
         if (res == nullptr) {
@@ -107,9 +107,9 @@ bool PersistProcessingPool::process_data(ResPointCloud data) {
         // 6. 更新数据库记录
         char sql[1024] = {0};
         sprintf(sql, 
-            "INSERT INTO user(IDC, asymmetry, pc_data_path) VALUES('%s', %f, '%s') "
-            "ON DUPLICATE KEY UPDATE asymmetry=VALUES(asymmetry), pc_data_path=VALUES(pc_data_path), updated_at=CURRENT_TIMESTAMP",
-            data.ID, data.asymmetry, final_filename.c_str()
+            "INSERT INTO newUser(IDC, name, age, gender, asymmetry, pc_data_path) VALUES('%s', '%s', '%.*s', %d, %f, '%s') "
+            "ON DUPLICATE KEY UPDATE name=VALUES(name), age=VALUES(age), gender=VALUES(gender), asymmetry=VALUES(asymmetry), pc_data_path=VALUES(pc_data_path), updated_at=CURRENT_TIMESTAMP",
+            data.ID, data.name, 3, data.age, data.gender ? 1 : 0, data.asymmetry, final_filename.c_str()
         );
 
         if (!conn->update(sql)) {

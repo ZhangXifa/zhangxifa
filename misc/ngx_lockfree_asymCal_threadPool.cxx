@@ -58,10 +58,22 @@ ResPointCloud ResultProcessingPool::process_data(MirrorICPPointCloud data){
     ResPointCloud res;
     memcpy(res.serlizdPCdata.serializedData, pPkgBodySource, data.dataLen);
     res.serlizdPCdata.dataLen = data.dataLen;
+    memcpy(res.serlizdPCdata.ID, data.ID, 7);
+    memcpy(res.serlizdPCdata.name, data.name, sizeof(res.serlizdPCdata.name));
+    memcpy(res.serlizdPCdata.age, data.age, sizeof(res.serlizdPCdata.age));
+    res.serlizdPCdata.gender = data.gender;
+    res.serlizdPCdata.fd = data.fd;
     res.asymmetry = asymmetry;
     memcpy(res.ID, data.ID, 7);
+    memcpy(res.name, data.name, sizeof(res.name));
+    memcpy(res.age, data.age, sizeof(res.age));
+    res.gender = data.gender;
     ResToNetwork ans;
     ans.asymmetry = asymmetry;
+    memcpy(ans.ID, data.ID, 7);
+    memcpy(ans.name, data.name, sizeof(ans.name));
+    memcpy(ans.age, data.age, sizeof(ans.age));
+    ans.gender = data.gender;
     ans.fd = data.fd;
     int attempts = 0;
      while (!g_asymm_process_to_master_queue->try_push(std::move(ans))) {

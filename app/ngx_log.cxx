@@ -71,7 +71,6 @@ void ngx_log_stderr(int err, const char *fmt, ...)
     return;
 }
 
-//------------------------------------------------------------
 //buf：是个内存，要往这里保存数据
 //last：放的数据不要超过这里
 //err：错误编号，我们是要取得这个错误编号对应的错误字符串，保存到buffer中
@@ -98,7 +97,6 @@ u_char *ngx_log_errno(u_char *buf, u_char *last, int err)
     return buf;
 }
 
-//----------------------------------------------------------------------------------------------------------------------
 //往日志文件中写日志，代码中有自动加换行符，所以调用时字符串不用刻意加\n；
 void ngx_log_error_core(int level,  int err, const char *fmt, ...)
 {
@@ -183,8 +181,6 @@ void ngx_log_error_core(int level,  int err, const char *fmt, ...)
     return;
 }
 
-//----------------------------------------------------------------------------------------------------------------------
-//描述：日志初始化，就是把日志文件打开 ，注意这里边涉及到释放的问题，如何解决？
 void ngx_log_init()
 {
     u_char *plogname = NULL;
@@ -198,10 +194,10 @@ void ngx_log_init()
         //没读到，就要给个缺省的路径文件名了
         plogname = (u_char *) NGX_ERROR_LOG_PATH; //"logs/error.log" ,logs目录需要提前建立出来
     }
-    ngx_log.log_level = p_config->GetIntDefault("LogLevel",NGX_LOG_NOTICE);//缺省日志等级为6【注意】 ，如果读失败，就给缺省日志等级
+    ngx_log.log_level = p_config->GetIntDefault("LogLevel",NGX_LOG_NOTICE);//缺省日志等级为6[注意] ，如果读失败，就给缺省日志等级
 
-    //只写打开|追加到末尾|文件不存在则创建【这个需要跟第三参数指定文件访问权限】
-    //mode = 0644：文件访问权限， 6: 110    , 4: 100：     【用户：读写， 用户所在组：读，其他：读】
+    //只写打开|追加到末尾|文件不存在则创建[这个需要跟第三参数指定文件访问权限]
+    //mode = 0644：文件访问权限， 6: 110    , 4: 100：     [用户：读写， 用户所在组：读，其他：读]
     //ngx_log.fd = open((const char *)plogname,O_WRONLY|O_APPEND|O_CREAT|O_DIRECT,0644);   //绕过内和缓冲区，write()成功则写磁盘必然成功，但效率可能会比较低；
     ngx_log.fd = open((const char *)plogname,O_WRONLY|O_APPEND|O_CREAT,0644);  
     if (ngx_log.fd == -1)  //如果有错误，则直接定位到 标准错误上去 

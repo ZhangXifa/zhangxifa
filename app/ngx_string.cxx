@@ -1,5 +1,4 @@
-﻿
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <string.h>
 
 //截取字符串尾部空格

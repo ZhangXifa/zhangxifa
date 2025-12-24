@@ -51,6 +51,9 @@ MirrorICPPointCloud MirrorICPProcessingPool::process_data(PointCloud data) {
     memcpy(serializedPointCloud.MirrorICPSerlzdData, bufferMirrorIcp.data(), bufferMirrorIcp.size());
     serializedPointCloud.MirrorICPLen = bufferMirrorIcp.size();
     memcpy(serializedPointCloud.ID, data.ID, 7);
+    memcpy(serializedPointCloud.name, data.name, sizeof(serializedPointCloud.name));
+    memcpy(serializedPointCloud.age, data.age, sizeof(serializedPointCloud.age));
+    serializedPointCloud.gender = data.gender;
     return serializedPointCloud;
 }
 pcl::PointCloud<pcl::PointXYZ> MirrorICPProcessingPool::pointCloudMirror(const pcl::PointCloud<pcl::PointXYZ>& pointCloudin){

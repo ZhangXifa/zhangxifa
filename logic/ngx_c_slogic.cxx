@@ -223,6 +223,10 @@ bool CLogicSocket::_PCDreceive(lpngx_connection_t pConn, LPSTRUC_MSG_HEADER pMsg
     memcpy(pc.serializedData, recvpc->serializedData, pc.dataLen);
     strncpy(pc.ID, recvpc->ID, sizeof(pc.ID) - 1);
     pc.ID[sizeof(pc.ID) - 1] = '\0';
+    strncpy(pc.name, recvpc->name, sizeof(pc.name) - 1);
+    pc.name[sizeof(pc.name) - 1] = '\0';
+    memcpy(pc.age, recvpc->age, sizeof(pc.age));
+    pc.gender = recvpc->gender;
     pc.fd = pConn->fd;
 
     // 写入队列
@@ -248,7 +252,7 @@ double CLogicSocket::getAsymmetryByIDC(const std::string& idcValue) {
     }
 
     
-    std::string sql = "SELECT asymmetry FROM user WHERE IDC = '" + idcValue + "'";
+    std::string sql = "SELECT asymmetry FROM newUser WHERE IDC = '" + idcValue + "'";
     
     MYSQL_RES* res = conn->query(sql);
     if (!res) {
@@ -285,31 +289,52 @@ bool CLogicSocket::_PCDsend(lpngx_connection_t pConn,LPSTRUC_MSG_HEADER pMsgHead
   
     CLock lock(&pConn->logicPorcMutex); //凡是和本用户有关的访问都互斥
     
-    //(3)取得了整个发送过来的数据
     LPSTRUCT_ID p_RecvInfo = (LPSTRUCT_ID)pPkgBody;  
     std::string IDC = p_RecvInfo->ID;
-    double asymmetry = CLogicSocket::getAsymmetryByIDC(IDC);
 	LPCOMM_PKG_HEADER pPkgHeader;	
 	CMemory  *p_memory = CMemory::GetInstance();
 	CCRC32   *p_crc32 = CCRC32::GetInstance();
-    int iSendLen = sizeof(STRUCT_ASY);  
-    char *p_sendbuf = (char *)p_memory->AllocMemory(m_iLenMsgHeader+m_iLenPkgHeader+iSendLen,false);//准备发送的格式，这里是 消息头+包头+包体
-    //b)填充消息头
-    memcpy(p_sendbuf,pMsgHeader,m_iLenMsgHeader);                   //消息头直接拷贝到这里来
-    //c)填充包头
-    pPkgHeader = (LPCOMM_PKG_HEADER)(p_sendbuf+m_iLenMsgHeader);    //指向包头
-    pPkgHeader->msgCode = _CMD_REGISTER;	                        //消息代码，可以统一在ngx_logiccomm.h中定义
-    pPkgHeader->msgCode = htons(pPkgHeader->msgCode);	            //htons主机序转网络序 
-    pPkgHeader->pkgLen  = htonl(m_iLenPkgHeader + iSendLen);        //整个包的尺寸【包头+包体尺寸】 
-    //d)填充包体
-    LPSTRUCT_ASY p_sendInfo = (LPSTRUCT_ASY)(p_sendbuf+m_iLenMsgHeader+m_iLenPkgHeader);	//跳过消息头，跳过包头，就是包体了
+    int iSendLen = sizeof(ResToNetwork);  
+    char *p_sendbuf = (char *)p_memory->AllocMemory(m_iLenMsgHeader+m_iLenPkgHeader+iSendLen,false);
+    memcpy(p_sendbuf,pMsgHeader,m_iLenMsgHeader);
+    pPkgHeader = (LPCOMM_PKG_HEADER)(p_sendbuf+m_iLenMsgHeader);
+    pPkgHeader->msgCode = 2;
+    pPkgHeader->msgCode = htons(pPkgHeader->msgCode);
+    pPkgHeader->pkgLen  = htonl(m_iLenPkgHeader + iSendLen);
+    ResToNetwork* p_sendInfo = (ResToNetwork*)(p_sendbuf+m_iLenMsgHeader+m_iLenPkgHeader);
+    memset(p_sendInfo, 0, sizeof(ResToNetwork));
+    memcpy(p_sendInfo->ID, IDC.c_str(), 7);
+    MySQLConnectionPool* pool = MySQLConnectionPool::getConnectionPool();
+    std::shared_ptr<Connection> conn = pool->getConnection();
+    double asymmetry = -1.0;
+    if (conn) {
+        std::string sql = "SELECT name, age, gender, asymmetry FROM newUser WHERE IDC = '" + IDC + "'";
+        MYSQL_RES* res = conn->query(sql);
+        if (res) {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            if (row) {
+                if (row[0]) {
+                    strncpy(p_sendInfo->name, row[0], sizeof(p_sendInfo->name)-1);
+                }
+                if (row[1]) {
+                    memcpy(p_sendInfo->age, row[1], sizeof(p_sendInfo->age));
+                }
+                if (row[2]) {
+                    int g = atoi(row[2]);
+                    p_sendInfo->gender = (g != 0);
+                }
+                if (row[3]) {
+                    asymmetry = atof(row[3]);
+                }
+            }
+            mysql_free_result(res);
+        }
+    }
     p_sendInfo->asymmetry = htond(asymmetry);
-    
-    //e)包体内容全部确定好后，计算包体的crc32值
+    p_sendInfo->fd = pConn->fd;
+    p_sendInfo->fd = htonl(p_sendInfo->fd);
     pPkgHeader->crc32   = p_crc32->Get_CRC((unsigned char *)p_sendInfo,iSendLen);
     pPkgHeader->crc32   = htonl(pPkgHeader->crc32);		
-
-    //f)发送数据包
     msgSend(p_sendbuf);
     return true;
 }

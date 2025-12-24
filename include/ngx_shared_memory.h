@@ -26,6 +26,9 @@ struct PointCloud{
     char serializedData[1024*1024];
     size_t dataLen;
     char ID[7];
+    char name[32];
+    char age[3];
+    bool gender;
     int fd;
 };
 struct MirrorICPPointCloud{
@@ -34,6 +37,9 @@ struct MirrorICPPointCloud{
     size_t dataLen;
     size_t MirrorICPLen;
     char ID[7];
+    char name[32];
+    char age[3];
+    bool gender;
     int fd;
 };
 struct ResPointCloud
@@ -41,10 +47,17 @@ struct ResPointCloud
     PointCloud serlizdPCdata;
     double asymmetry;
     char ID[7];
+    char name[32];
+    char age[3];
+    bool gender;
 };
 struct ResToNetwork
 {
     double asymmetry;
+    char ID[7];
+    char name[32];
+    char age[3];
+    bool gender;
     int fd;
 };
 #pragma pack()

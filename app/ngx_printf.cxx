@@ -1,5 +1,4 @@
-﻿
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
@@ -36,7 +35,7 @@ u_char * ngx_snprintf(u_char *buf, size_t max, const char *fmt, ...)   //类prin
 //buf：往这里放数据
 //last：放的数据不要超过这里
 //fmt：以这个为首的一系列可变参数
-//支持的格式： %d【%Xd/%xd】:数字,    %s:字符串      %f：浮点,  %P：pid_t
+//支持的格式： %d[%Xd/%xd]:数字,    %s:字符串      %f：浮点,  %P：pid_t
     //对于：ngx_log_stderr(0, "invalid option: \"%s\",%d", "testinfo",123);
        //fmt = "invalid option: \"%s\",%d"
        //args = "testinfo",123
@@ -88,7 +87,7 @@ u_char *ngx_vslprintf(u_char *buf, u_char *last,const char *fmt,va_list args)
                 width = width * 10 + (*fmt++ - '0');
             }
 
-            for ( ;; ) //一些特殊的格式，我们做一些特殊的标记【给一些变量特殊值等等】
+            for ( ;; ) //一些特殊的格式，我们做一些特殊的标记[给一些变量特殊值等等]
             {
                 switch (*fmt)  //处理一些%之后的特殊字符
                 {
@@ -199,7 +198,7 @@ u_char *ngx_vslprintf(u_char *buf, u_char *last,const char *fmt,va_list args)
                     *buf++ = '-'; //单独搞个负号出来
                     f = -f; //那这里f应该是正数了!
                 }
-                //走到这里保证f肯定 >= 0【不为负数】
+                //走到这里保证f肯定 >= 0[不为负数]
                 ui64 = (int64_t) f; //正整数部分给到ui64里
                 frac = 0;
 
@@ -215,8 +214,8 @@ u_char *ngx_vslprintf(u_char *buf, u_char *last,const char *fmt,va_list args)
                     //把小数部分取出来 ，比如如果是格式    %.2f   ，对应的参数是12.537
                     // (uint64_t) ((12.537 - (double) 12) * 100 + 0.5);  
                                 //= (uint64_t) (0.537 * 100 + 0.5)  = (uint64_t) (53.7 + 0.5) = (uint64_t) (54.2) = 54
-                    frac = (uint64_t) ((f - (double) ui64) * scale + 0.5);   //取得保留的那些小数位数，【比如  %.2f   ，对应的参数是12.537，取得的就是小数点后的2位四舍五入，也就是54】
-                                                                             //如果是"%.6f", 21.378，那么这里frac = 378000
+                    frac = (uint64_t) ((f - (double) ui64) * scale + 0.5);   //取得保留的那些小数位数，[比如  %.2f   ，对应的参数是12.537，取得的就是小数点后的2位四舍五入，也就是54]
+                                                                            //如果是"%.6f", 21.378，那么这里frac = 378000
 
                     if (frac == scale)   //进位，比如    %.2f ，对应的参数是12.999，那么  = (uint64_t) (0.999 * 100 + 0.5)  = (uint64_t) (99.9 + 0.5) = (uint64_t) (100.4) = 100
                                           //而此时scale == 100，两者正好相等
@@ -266,7 +265,7 @@ u_char *ngx_vslprintf(u_char *buf, u_char *last,const char *fmt,va_list args)
             buf = ngx_sprintf_num(buf, last, ui64, zero, hex, width); 
             fmt++;
         }
-        else  //当成正常字符，源【fmt】拷贝到目标【buf】里
+        else  //当成正常字符，源[fmt]拷贝到目标[buf]里
         {
             //用fmt当前指向的字符赋给buf当前指向的位置，然后buf往前走一个字符位置，fmt当前走一个字符位置
             *buf++ = *fmt++;   //*和++优先级相同，结合性从右到左，所以先求的是buf++以及fmt++，但++是先用后加；
@@ -278,14 +277,14 @@ u_char *ngx_vslprintf(u_char *buf, u_char *last,const char *fmt,va_list args)
 
 //----------------------------------------------------------------------------------------------------------------------
 //以一个指定的宽度把一个数字显示在buf对应的内存中, 如果实际显示的数字位数 比指定的宽度要小 ,比如指定显示10位，而你实际要显示的只有“1234567”，那结果可能是会显示“   1234567”
-     //当然如果你不指定宽度【参数width=0】，则按实际宽度显示
+     //当然如果你不指定宽度[参数width=0]，则按实际宽度显示
      //你给进来一个%Xd之类的，还能以十六进制数字格式显示出来
 //buf：往这里放数据
 //last：放的数据不要超过这里
 //ui64：显示的数字         
-//zero:显示内容时，格式字符%后边接的是否是个'0',如果是zero = '0'，否则zero = ' ' 【一般显示的数字位数不足要求的，则用这个字符填充】，比如要显示10位，而实际只有7位，则后边填充3个这个字符；
+//zero:显示内容时，格式字符%后边接的是否是个'0',如果是zero = '0'，否则zero = ' ' [一般显示的数字位数不足要求的，则用这个字符填充]，比如要显示10位，而实际只有7位，则后边填充3个这个字符；
 //hexadecimal：是否显示成十六进制数字 0：不
-//width:显示内容时，格式化字符%后接的如果是个数字比如%16，那么width=16，所以这个是希望显示的宽度值【如果实际显示的内容不够，则后头用0填充】
+//width:显示内容时，格式化字符%后接的如果是个数字比如%16，那么width=16，所以这个是希望显示的宽度值[如果实际显示的内容不够，则后头用0填充]
 static u_char * ngx_sprintf_num(u_char *buf, u_char *last, uint64_t ui64, u_char zero, uintptr_t hexadecimal, uintptr_t width)
 {
     //temp[21]
@@ -342,18 +341,18 @@ static u_char * ngx_sprintf_num(u_char *buf, u_char *last, uint64_t ui64, u_char
 
     len = (temp + NGX_INT64_LEN) - p;  //得到这个数字的宽度，比如 “7654321”这个数字 ,len = 7
 
-    while (len++ < width && buf < last)  //如果你希望显示的宽度是10个宽度【%12f】，而实际想显示的是7654321，只有7个宽度，那么这里要填充5个0进去到末尾，凑够要求的宽度
+    while (len++ < width && buf < last)  //如果你希望显示的宽度是10个宽度[%12f]，而实际想显示的是7654321，只有7个宽度，那么这里要填充5个0进去到末尾，凑够要求的宽度
     {
         *buf++ = zero;  //填充0进去到buffer中（往末尾增加），比如你用格式  
                                           //ngx_log_stderr(0, "invalid option: %10d\n", 21); 
                                           //显示的结果是：nginx: invalid option:         21  ---21前面有8个空格，这8个弄个，就是在这里添加进去的；
     }
     
-    len = (temp + NGX_INT64_LEN) - p; //还原这个len，也就是要显示的数字的实际宽度【因为上边这个while循环改变了len的值】
+    len = (temp + NGX_INT64_LEN) - p; //还原这个len，也就是要显示的数字的实际宽度[因为上边这个while循环改变了len的值]
     //现在还没把实际的数字比如“7654321”往buf里拷贝呢，要准备拷贝
 
     //如下这个等号是我加的【我认为应该加等号】，nginx源码里并没有加;
-    if((buf + len) >= last)   //发现如果往buf里拷贝“7654321”后，会导致buf不够长【剩余的空间不够拷贝整个数字】
+    if((buf + len) >= last)   //发现如果往buf里拷贝“7654321”后，会导致buf不够长[剩余的空间不够拷贝整个数字]
     {
         len = last - buf; //剩余的buf有多少我就拷贝多少
     }

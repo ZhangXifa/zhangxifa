@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>    //uintptr_t
@@ -906,6 +906,10 @@ void* CSocekt::ServerMoveQueueThread(void* threadData){
                 ResToNetwork* p_sendInfo = (ResToNetwork*)(p_sendbuf+pSocketObj->m_iLenMsgHeader+pSocketObj->m_iLenPkgHeader);
                 p_sendInfo->asymmetry = ans.asymmetry;//主机序得转网络序
                 p_sendInfo->asymmetry = htond(p_sendInfo->asymmetry);
+                memcpy(p_sendInfo->ID, ans.ID, sizeof(p_sendInfo->ID));
+                memcpy(p_sendInfo->name, ans.name, sizeof(p_sendInfo->name));
+                memcpy(p_sendInfo->age, ans.age, sizeof(p_sendInfo->age));
+                p_sendInfo->gender = ans.gender;
                 p_sendInfo->fd = ans.fd;
                 p_sendInfo->fd = htonl(p_sendInfo->fd);
                 pPkgHeader->crc32 = p_crc32->Get_CRC((unsigned char *)p_sendInfo,iSendLen);

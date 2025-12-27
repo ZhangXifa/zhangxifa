@@ -168,7 +168,7 @@ void CLogicSocket::SendNoBodyPkgToClient(LPSTRUC_MSG_HEADER pMsgHeader,unsigned 
 
     LPCOMM_PKG_HEADER pPkgHeader = (LPCOMM_PKG_HEADER)p_tmpbuf;	  //指向的是我要发送出去的包的包头	
     pPkgHeader->msgCode = htons(iMsgCode);	
-    pPkgHeader->pkgLen = htons(m_iLenPkgHeader); 
+    pPkgHeader->pkgLen = htonl(m_iLenPkgHeader); 
 	pPkgHeader->crc32 = 0;		
     msgSend(p_sendbuf);
     return;
